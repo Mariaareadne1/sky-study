@@ -40,12 +40,12 @@ const KEYS: readonly Key[] = [
   { h: 6.35, sunAz: -78, sunEl: 3.5, haze: 2.4, exposure: 1.0 },
   { h: 8.5, sunAz: -125, sunEl: 24, haze: 1.6, exposure: 1.12 },
   { h: 12.5, sunAz: -250, sunEl: 48, haze: 1.0, exposure: 1.22 },
-  { h: 16.5, sunAz: -268, sunEl: 20, haze: 1.5, exposure: 1.12 },
-  { h: 18.2, sunAz: -284, sunEl: 5.0, haze: 2.6, exposure: 1.0 },
-  { h: 19.0, sunAz: -290, sunEl: -2.0, haze: 2.3, exposure: 1.0 },
-  { h: 19.45, sunAz: -294, sunEl: -5.5, haze: 1.5, exposure: 0.9 },
-  { h: 20.5, sunAz: -300, sunEl: -12, haze: 1.8, exposure: 1.0 },
-  { h: 23.5, sunAz: -320, sunEl: -30, haze: 1.6, exposure: 1.0 },
+  { h: 16.5, sunAz: -256, sunEl: 20, haze: 1.5, exposure: 1.12 },
+  { h: 18.2, sunAz: -262, sunEl: 5.0, haze: 2.6, exposure: 1.0 },
+  { h: 19.0, sunAz: -268, sunEl: -2.0, haze: 2.3, exposure: 1.0 },
+  { h: 19.45, sunAz: -273, sunEl: -5.5, haze: 1.5, exposure: 0.9 },
+  { h: 20.5, sunAz: -282, sunEl: -12, haze: 1.8, exposure: 1.0 },
+  { h: 23.5, sunAz: -300, sunEl: -30, haze: 1.6, exposure: 1.0 },
 ];
 
 function sampleKeys(hour: number): Key {

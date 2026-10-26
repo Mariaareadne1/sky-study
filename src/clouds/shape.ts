@@ -174,13 +174,13 @@ export function buildShape(points: readonly Point2[], closed: boolean, seed: num
 
   if (closed && points.length >= 8) {
     // Fill the enclosed region and inflate it: lobes sized by the distance to the outline.
-    const grid = clamp(size / 11, 0.08, 1.2);
+    const grid = clamp(size / 8, 0.1, 1.4);
     let maxD = 0;
     const interior: { x: number; y: number; d: number; s: number }[] = [];
     for (let y = b.minY + grid * 0.5; y < b.maxY; y += grid) {
       for (let x = b.minX + grid * 0.5; x < b.maxX; x += grid) {
-        const jx = x + rand(-0.3, 0.3) * grid;
-        const jy = y + rand(-0.3, 0.3) * grid;
+        const jx = x + rand(-0.4, 0.4) * grid;
+        const jy = y + rand(-0.4, 0.4) * grid;
         if (!pointInPolygon(jx, jy, points)) continue;
         const { d, s } = distToPolyline(jx, jy, points, true);
         if (d < grid * 0.35) continue;
@@ -189,16 +189,17 @@ export function buildShape(points: readonly Point2[], closed: boolean, seed: num
       }
     }
     for (const p of interior) {
-      const r = clamp(p.d * rand(0.95, 1.15), grid * 0.6, size * 0.4);
-      const depth = Math.min(p.d, maxD) * 0.55;
-      primaries.push({ x: p.x, y: p.y, z: rand(-0.35, 0.35) * depth, r, t: 0.55 * (1 - p.d / (maxD || 1)) + 0.45 * p.s });
+      if (rng() < 0.25) continue;
+      // varied, rounder masses: the inflated region becomes a cluster of sub-clouds
+      const r = clamp(p.d * rand(0.85, 1.3), grid * 0.6, size * 0.42);
+      primaries.push({ x: p.x, y: p.y, z: rand(-0.55, 0.55) * Math.min(p.d, maxD), r, t: 0.55 * (1 - p.d / (maxD || 1)) + 0.45 * p.s });
     }
     // the outline itself, so the silhouette follows the gesture
     const rim = clamp(size * 0.075, 0.1, 0.8);
     const step = Math.max(1, Math.round((rim * 0.9) / (total / points.length || 1)));
     for (let i = 0; i < points.length; i += step) {
       const p = points[i];
-      primaries.push({ x: p.x, y: p.y, z: rand(-0.3, 0.3) * rim, r: rim * rand(0.8, 1.2), t: i / points.length });
+      primaries.push({ x: p.x, y: p.y, z: rand(-0.4, 0.4) * rim, r: rim * rand(0.65, 1.45), t: i / points.length });
     }
   } else {
     const r0 = clamp(0.1 * total + 0.22, 0.24, 1.25);
@@ -260,6 +261,12 @@ export function buildShape(points: readonly Point2[], closed: boolean, seed: num
     closed,
     baseY: round4(baseY),
   };
+}
+
+/** Base height of the shape a stroke would build (cheap enough to call before committing). */
+export function shapeHalfAfterBuild(points: readonly Point2[], closed: boolean, seed: number): { baseY: number; half: readonly [number, number, number] } {
+  const s = buildShape(points, closed, seed);
+  return { baseY: s.baseY, half: s.half };
 }
 
 export const SLOT_DIMS = { x: 96, y: 64, z: 64 } as const;

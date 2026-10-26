@@ -26,10 +26,10 @@ Observable in the screenshots:
 - [x] M0 — repo, toolchain, docs skeleton
 - [x] M1 — volumetric rendering spike (`/spike.html`)
 - [x] M2 — sky + five time presets
-- [ ] M3 — stroke capture & shape generation
-- [ ] M4 — formation animation
-- [ ] M5 — movable 3D clouds
-- [ ] M6 — UI, undo/redo, persistence
+- [x] M3 — stroke capture & shape generation
+- [x] M4 — formation animation (first pass; frame-by-frame review pending)
+- [x] M5 — movable 3D clouds
+- [x] M6 — UI, undo/redo, persistence
 - [ ] M7 — capture/export
 - [ ] M8 — optimisation
 - [ ] M9 — QA, case study
@@ -42,6 +42,14 @@ Observable in the screenshots:
 3. Ambient was scaled by π (wrong: in-scattered radiance from an isotropic sky is its average radiance). Fixing it restored sunlit/shadow contrast.
 4. Terraced contour bands on lit faces from a fixed-offset light march → jittered light-march samples.
 5. Blue hour was a saturated sunset (sun too high), then black (single scattering collapses below −6°). Added a twilight dome/glow term in both GPU and CPU models and desaturated the last red direct light toward pink.
+
+### M3–M6 — the app
+- Strokes are projected onto a vertical plane 9 km in front of the camera; open strokes become lobes along the path, closed strokes are inflated (lobe radius from distance-to-outline), then towers and cauliflower lobes are added on upper surfaces.
+- Formation reveals the volume along the gesture order (G channel) with an ease-out over 3.4 s; the white line holds 0.7 s then fades.
+- Picking ray-tests the gesture lobes (shrunk 18 %) rather than the noisy density: stable and forgiving. Selection box is projected from the lobes.
+- Depth moves keep altitude (like a real receding cloud it sinks toward the horizon) — first version moved along the view ray, which sent far clouds to 10 km altitude.
+- Golden-hour finding from the pixel test: with the sun slightly in front the visible faces were in shadow and read cool. Swung the evening sun to behind-right so lit faces face the viewer.
+- Tests: 37 unit (Vitest) + 12 E2E (Playwright, Chromium on Metal; 3 also on Playwright WebKit). E2E assertions use `engine.sample()`, a small offscreen render of the real scene, so they check pixels, not just state.
 
 ## Environment notes
 - Dev server: `npm run dev` → http://localhost:5362 (launch config `sky-study`).

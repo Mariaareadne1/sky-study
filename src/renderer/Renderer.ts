@@ -86,11 +86,14 @@ export class Renderer {
   private skyKey = '';
   private lastAtmosphere: Atmosphere | null = null;
   quality: Quality;
+  /** Internal render resolution relative to the output (device) pixels. */
+  renderScale: number;
   camera: Camera;
 
   constructor(canvas: HTMLCanvasElement, quality: Quality = 'balanced') {
     this.canvas = canvas;
     this.quality = quality;
+    this.renderScale = QUALITY_SCALE[quality];
     const gl = canvas.getContext('webgl2', {
       antialias: false,
       alpha: false,
@@ -234,7 +237,7 @@ export class Renderer {
   }
 
   /** Size of the internal (raymarched) image for a given output size. */
-  renderSizeFor(outW: number, outH: number, scale = QUALITY_SCALE[this.quality]): [number, number] {
+  renderSizeFor(outW: number, outH: number, scale = this.renderScale): [number, number] {
     return [Math.max(2, Math.round(outW * scale)), Math.max(2, Math.round(outH * scale))];
   }
 
