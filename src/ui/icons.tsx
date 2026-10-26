@@ -13,3 +13,4 @@ export const IconRecord = () => (<svg {...base}><circle cx="8" cy="8" r="5.6" />
 export const IconStop = () => (<svg {...base}><rect x="4" y="4" width="8" height="8" rx="1.2" fill="currentColor" stroke="none" /></svg>);
 export const IconPlay = () => (<svg {...base}><path d="M5 3.2v9.6L12.6 8z" fill="currentColor" stroke="none" /></svg>);
 export const IconClose = () => (<svg {...base}><path d="m4 4 8 8M12 4l-8 8" /></svg>);
+export const IconLook = () => (<svg {...base}><circle cx="8" cy="8" r="6.2" /><path d="m10.6 5.4-1.5 3.7-3.7 1.5 1.5-3.7z" /></svg>);

@@ -119,3 +119,51 @@ describe('picking and perspective', () => {
     expect(big.shape).toEqual(small.shape); // same gesture & seed: geometry identical; only the transform differs
   });
 });
+
+describe('changing perspective', () => {
+  test('view presets and clamping keep the camera sane', async () => {
+    const { VIEW_PRESETS, clampView } = await import('../../src/renderer/camera');
+    expect(VIEW_PRESETS.map((p) => p.id)).toEqual(['ground', 'eye', 'above']);
+    const v = clampView({ yaw: 7, pitch: -3, altitude: 999 });
+    expect(Math.abs(v.yaw)).toBeLessThanOrEqual(Math.PI);
+    expect(v.pitch).toBeGreaterThan(-Math.PI / 2);
+    expect(v.altitude).toBeLessThanOrEqual(16);
+  });
+
+  test('a turned camera draws on a plane facing it, and the cloud lands under the stroke', () => {
+    const view = { yaw: 0.8, pitch: 0.2, altitude: 1 };
+    const cam = createCamera(1.6, view);
+    const ndc = Array.from({ length: 30 }, (_, i) => ({ x: -0.3 + (i / 29) * 0.6, y: 0.15 + Math.sin(i / 4) * 0.05 }));
+    const res = strokeToCloud(cam, ndc, 4);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const p = project(cam, res.cloud.position)!;
+    expect(Math.abs(p.x)).toBeLessThan(0.05);
+    expect(res.cloud.yaw).toBeCloseTo(-0.8, 6);
+    // the drawn stroke's direction maps onto the camera's right axis
+    const { doc, shape } = { doc: { ...res.cloud, id: 't', order: 0 }, shape: buildShape(res.cloud.stroke, res.cloud.closed, res.cloud.seed) };
+    const toCentre = sub(doc.position, cam.position);
+    const dir = toCentre.map((v) => v / length(toCentre)) as unknown as Vec3;
+    expect(rayHitCloud(cam.position, dir, doc, shape)).not.toBeNull();
+  });
+
+  test('looking down from above, a stroke becomes a horizontal footprint', () => {
+    const cam = createCamera(1.6, { yaw: 0, pitch: -0.87, altitude: 11 });
+    const ndc = Array.from({ length: 60 }, (_, i) => {
+      const t = (i / 59) * Math.PI * 2;
+      return { x: Math.sin(t) * 0.35, y: Math.cos(t) * 0.12 };
+    });
+    const res = strokeToCloud(cam, ndc, 8);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.cloud.orientation).toBe('horizontal');
+    expect(res.cloud.position[1]).toBeCloseTo(2.2, 1);
+    const shape = buildShape(res.cloud.stroke, res.cloud.closed, res.cloud.seed, 'horizontal');
+    // wide footprint, comparatively shallow but still a 3D mass
+    expect(shape.half[0]).toBeGreaterThan(shape.half[1]);
+    expect(shape.half[1]).toBeGreaterThan(0.2);
+    // the cloud sits where the stroke was drawn
+    const p = project(cam, res.cloud.position)!;
+    expect(Math.abs(p.x)).toBeLessThan(0.08);
+  });
+});

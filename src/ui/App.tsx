@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { PRESETS } from '../atmosphere/timeOfDay';
 import { Engine } from '../engine/Engine';
-import { loadSavedScene, startAutosave } from '../state/persistence';
+import { loadSavedScene, loadSavedView, startAutosave } from '../state/persistence';
 import { useSky } from '../state/store';
 import { stopRecording, stopShowcase } from '../capture/session';
 import { CaptureMenu } from './CaptureMenu';
 import { EngineContext } from './engineContext';
 import { HelpPanel } from './HelpPanel';
-import { IconClear, IconEye, IconHelp, IconMove, IconPen, IconRedo, IconStop, IconUndo } from './icons';
+import { IconClear, IconEye, IconHelp, IconLook, IconMove, IconPen, IconRedo, IconStop, IconUndo } from './icons';
+import { ViewControl } from './ViewControl';
+import { VIEW_PRESETS } from '../renderer/camera';
+import { DEG } from '../math/vec';
 import { InteractionLayer } from './InteractionLayer';
 import { SelectionBar } from './SelectionBar';
 import { TimeControl } from './TimeControl';
@@ -42,6 +45,21 @@ function useKeyboard() {
       switch (e.key) {
         case 'd': case 'D': st.setTool('draw'); break;
         case 'v': case 'V': st.setTool('move'); break;
+        case 'l': case 'L': st.setTool('look'); break;
+        case 'g': case 'G': st.setView(VIEW_PRESETS[0].view); break;
+        case 'e': case 'E': st.setView(VIEW_PRESETS[1].view); break;
+        case 't': case 'T': st.setView(VIEW_PRESETS[2].view); break;
+        case 'ArrowLeft': case 'ArrowRight': case 'ArrowUp': case 'ArrowDown': {
+          if (isRange || target.closest('button')) break;
+          e.preventDefault();
+          const step = (e.shiftKey ? 12 : 4) * DEG;
+          const v = st.view;
+          if (e.key === 'ArrowLeft') st.setView({ yaw: v.yaw - step });
+          if (e.key === 'ArrowRight') st.setView({ yaw: v.yaw + step });
+          if (e.key === 'ArrowUp') st.setView({ pitch: v.pitch + step });
+          if (e.key === 'ArrowDown') st.setView({ pitch: v.pitch - step });
+          break;
+        }
         case 'h': case 'H': st.setUiHidden(!st.uiHidden); break;
         case 'Escape':
           if (stopShowcase()) break;
@@ -109,6 +127,9 @@ function Chrome({ onHelp }: { onHelp: () => void }) {
         <button type="button" className={`tool ${tool === 'move' ? 'is-active' : ''}`} aria-pressed={tool === 'move'} title="Move (V)" data-testid="tool-move" onClick={() => st().setTool('move')}>
           <IconMove /> <span>Move</span>
         </button>
+        <button type="button" className={`tool ${tool === 'look' ? 'is-active' : ''}`} aria-pressed={tool === 'look'} title="Look around (L) — or right-drag anywhere" data-testid="tool-look" onClick={() => st().setTool('look')}>
+          <IconLook /> <span>Look</span>
+        </button>
         <span className="divider" />
         <button type="button" className="icon-button" title="Undo (⌘Z)" aria-label="Undo" disabled={!canUndo} data-testid="undo" onClick={() => st().undo()}>
           <IconUndo />
@@ -117,6 +138,7 @@ function Chrome({ onHelp }: { onHelp: () => void }) {
           <IconRedo />
         </button>
       </nav>
+      <ViewControl />
       <div className="bottom-right">
         <TimeControl />
         <CaptureMenu />
@@ -138,6 +160,8 @@ export function App() {
   useEffect(() => {
     const { scene, message } = loadSavedScene();
     useSky.getState().replaceScene(scene);
+    const view = loadSavedView();
+    if (view) useSky.getState().setView(view);
     if (message) useSky.getState().notify(message, 'warn');
     const stopSave = startAutosave();
     let eng: Engine | null = null;

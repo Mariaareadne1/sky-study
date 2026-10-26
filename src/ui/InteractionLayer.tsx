@@ -17,7 +17,8 @@ type Gesture =
   | { kind: 'stroke'; stroke: LiveStroke; startedOn: string | null; pointerId: number }
   | { kind: 'drag'; id: string; offset: Vec3; normal: Vec3; pointerId: number }
   | { kind: 'depth'; id: string; startY: number; startDistance: number; pointerId: number }
-  | { kind: 'scale'; id: string; cx: number; cy: number; startDist: number; startScale: number; pointerId: number };
+  | { kind: 'scale'; id: string; cx: number; cy: number; startDist: number; startScale: number; pointerId: number }
+  | { kind: 'look'; lastX: number; lastY: number; pointerId: number };
 
 const findCloud = (id: string | null): CloudDoc | undefined =>
   id ? useSky.getState().scene.clouds.find((c) => c.id === id) : undefined;
@@ -124,13 +125,19 @@ export function InteractionLayer() {
   }
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (!engine || e.button !== 0 || gesture.current) return;
+    if (!engine || gesture.current) return;
     const st = useSky.getState();
+    const lookButton = e.button === 2 || (e.button === 0 && st.tool === 'look');
+    if (e.button !== 0 && !lookButton) return;
     const { x, y } = localPoint(e);
     try {
       layerRef.current?.setPointerCapture(e.pointerId);
     } catch {
       // synthetic or already-released pointers can't be captured; the gesture still works
+    }
+    if (lookButton) {
+      gesture.current = { kind: 'look', lastX: x, lastY: y, pointerId: e.pointerId };
+      return;
     }
     const handle = (e.target as HTMLElement).dataset?.handle;
     if (handle && st.selectedId) {
@@ -176,6 +183,14 @@ export function InteractionLayer() {
     }
     if (g.pointerId !== e.pointerId) return;
     const st = useSky.getState();
+    if (g.kind === 'look') {
+      // grab the sky: dragging right turns the view left, dragging down looks up
+      const k = engine.camera.fovY / Math.max(1, engine.size.height);
+      const v = st.view;
+      st.setView({ yaw: v.yaw - (x - g.lastX) * k, pitch: v.pitch + (y - g.lastY) * k });
+      gesture.current = { ...g, lastX: x, lastY: y };
+      return;
+    }
     if (g.kind === 'stroke') {
       const events = e.nativeEvent.getCoalescedEvents?.() ?? [e.nativeEvent];
       for (const ev of events) addPoint(g.stroke, localPoint(ev));
@@ -203,6 +218,7 @@ export function InteractionLayer() {
     if (!g || g.pointerId !== e.pointerId || !engine) return;
     gesture.current = null;
     const st = useSky.getState();
+    if (g.kind === 'look') return;
     if (g.kind !== 'stroke') {
       st.end();
       return;
@@ -242,7 +258,7 @@ export function InteractionLayer() {
     const { origin, dir } = engine.rayAt(x, y);
     const pick = pickCloud(origin, dir, st.scene.clouds, shapeOf, (c) => engine.renderPosition(c));
     const overSelected = pick && pick.id === st.selectedId;
-    el.dataset.cursor = st.tool === 'move' ? (pick ? 'grab' : 'default') : overSelected ? 'grab' : 'draw';
+    el.dataset.cursor = st.tool === 'look' ? 'grab' : st.tool === 'move' ? (pick ? 'grab' : 'default') : overSelected ? 'grab' : 'draw';
   }
 
   return (
@@ -250,7 +266,8 @@ export function InteractionLayer() {
       ref={layerRef}
       className="interaction-layer"
       data-tool={tool}
-      data-cursor={tool === 'move' ? 'default' : 'draw'}
+      data-cursor={tool === 'look' ? 'grab' : tool === 'move' ? 'default' : 'draw'}
+      onContextMenu={(e) => e.preventDefault()}
       data-testid="sky-surface"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

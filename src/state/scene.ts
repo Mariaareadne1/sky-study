@@ -1,4 +1,4 @@
-import type { Point2 } from '../clouds/shape';
+import type { Orientation, Point2 } from '../clouds/shape';
 
 /**
  * The versioned scene document — everything needed to rebuild a sky exactly.
@@ -15,6 +15,8 @@ export interface CloudDoc {
   /** Stroke in shape space (km, centred on the cloud). */
   readonly stroke: readonly Point2[];
   readonly closed: boolean;
+  /** Plane the stroke was drawn on (absent in older saves = vertical). */
+  readonly orientation?: Orientation;
   /** World-space centre (km). */
   readonly position: readonly [number, number, number];
   readonly scale: number;
@@ -44,6 +46,7 @@ function parseCloud(raw: unknown): CloudDoc | null {
   if (typeof c.id !== 'string' || c.id.length === 0 || c.id.length > 64) return null;
   if (!isNum(c.seed) || !isNum(c.scale) || !isNum(c.yaw) || !isNum(c.order)) return null;
   if (typeof c.closed !== 'boolean') return null;
+  if (c.orientation !== undefined && c.orientation !== 'vertical' && c.orientation !== 'horizontal') return null;
   if (!Array.isArray(c.position) || c.position.length !== 3 || !c.position.every(isNum)) return null;
   if (!Array.isArray(c.stroke) || c.stroke.length < 2 || c.stroke.length > 2000) return null;
   const stroke: Point2[] = [];
@@ -56,6 +59,7 @@ function parseCloud(raw: unknown): CloudDoc | null {
     seed: c.seed >>> 0,
     stroke,
     closed: c.closed,
+    ...(c.orientation === 'horizontal' ? { orientation: 'horizontal' as const } : {}),
     position: [c.position[0], c.position[1], c.position[2]] as const,
     scale: Math.min(SCALE_MAX, Math.max(SCALE_MIN, c.scale)),
     yaw: c.yaw,

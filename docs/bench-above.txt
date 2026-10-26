@@ -1,0 +1,5 @@
+ 1 clouds | balanced | 1440x900 (canvas 2880x1800) | mean 6.4 ms | median 5.3 | p90 11.7
+ 4 clouds | balanced | 1440x900 (canvas 2880x1800) | mean 9.5 ms | median 9.2 | p90 11.0
+ 8 clouds | balanced | 1440x900 (canvas 2880x1800) | mean 12.8 ms | median 12.4 | p90 15.6
+16 clouds | balanced | 1440x900 (canvas 2880x1800) | mean 21.2 ms | median 20.1 | p90 25.0
+live loop (auto quality, 16 clouds): {"fps":27.269093124175498,"scale":0.54,"quality":"balanced"}

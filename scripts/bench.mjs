@@ -24,6 +24,7 @@ for (const count of [1, 4, 8, 16]) {
     n++;
   }
   await page.waitForTimeout(3800);
+  if (process.env.ABOVE) { await page.evaluate(() => { window.__sky.store.getState().setView({ yaw: 0, pitch: -0.87, altitude: 11 }); window.__sky.engine.snapView(); }); await page.waitForTimeout(300); }
   for (const [label, scale, q] of [['reduced', 0.36, 'reduced'], ['balanced', 0.5, 'balanced'], ['high', 0.72, 'high']]) {
     const r = await page.evaluate(([s, qq]) => window.__sky.engine.benchmark(40, s, qq), [scale, q]);
     console.log(`${String(count).padStart(2)} clouds | ${label.padEnd(8)} | ${r.renderWidth}x${r.renderHeight} (canvas ${r.canvas.join('x')}) | mean ${r.mean.toFixed(1)} ms | median ${r.median.toFixed(1)} | p90 ${r.p90.toFixed(1)}`);

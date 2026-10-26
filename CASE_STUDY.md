@@ -76,6 +76,22 @@ The camera is fixed: 1 km up, pitched 15°, 50° vertical FOV, units in kilometr
 
 A drag, slider movement or scroll gesture is grouped into one transaction, so it produces a single undo step.
 
+## Changing perspective
+
+The first version had a fixed camera. Because the clouds were real volumes from the start, opening up the camera needed no change to the clouds themselves. The work went into everything around them:
+
+- **View model.** The camera is now yaw, pitch and altitude (clamped, no roll). The engine eases its displayed view toward the target: quickly while you're looking around, more slowly when you jump between Ground, Eye level and Above. The view is persisted separately from the scene, so undo never moves the camera.
+- **Look around.** Right-drag anywhere, use the Look tool, or the arrow keys. It "grabs the sky", so the rotation per pixel follows the field of view.
+- **Drawing follows the view.** Looking out, strokes land on a vertical plane facing the camera's yaw, and the cloud's yaw is set to face you. Looking down from above 4 km, strokes land on a horizontal plane at 2.2 km and become the cloud's *footprint*: the gesture lobes are mapped to the ground plane, the depth spread becomes height, and towers and cauliflower then grow upward as usual. Each cloud stores its orientation, so it rebuilds identically on reload.
+- **The sky from altitude.** The sky-view LUT is recomputed from the camera's height. The low-altitude haze override fades out above about 2 km, so the real surface shows. The ground is now ocean-dark and deepened toward slate, which matches the reference's top-down frames.
+- **Cloud shadows on the sea.** Each downward pixel marches 5 samples from its ground point toward the key light through every cloud box (coarse density only). The sample point is jittered per frame inside a 160 m disc, so accumulation softens it into a penumbra.
+
+| Above | Ground |
+| --- | --- |
+| ![](docs/images/above.jpg) | ![](docs/images/ground.jpg) |
+
+Cost: from above, more of the frame is cloud and every downward pixel runs the shadow march. Sixteen clouds take about 21 ms at balanced quality, versus 14 ms at eye level (`docs/bench-above.txt`). Auto quality drops the render scale to compensate.
+
 ## Technical challenges
 
 - **Shapes like cotton balls.** Fixed by treating coverage as a field and displacing it with a narrow transition (above).
@@ -116,8 +132,8 @@ Every renderer change was checked on headless-GPU screenshots of the determinist
 
 ## Verification
 
-- **Unit (Vitest, 37 tests):** stroke resampling and smoothing, rejection of bad input, closed-gesture detection, deterministic shapes and volumes, proportions that follow the gesture, the atmosphere model (transmittance, a blue zenith, warmth by preset, continuity across every hour), camera projection round trips, the drawing plane under different aspect ratios, picking and occlusion order, perspective shrink with distance, undo/redo and transaction grouping, the cloud limit, and scene validation.
-- **E2E (Playwright, 18 tests):** pixel-checked sky and cloud formation, drag without jumping, depth and scale, relighting, the continuous slider, occlusion picking, duplicate/delete/clear/undo/redo, persistence and recovery from corrupt data, the keyboard, PNG export (signature and dimensions), video export (probed **and fully decoded** with ffprobe: H.264 MP4, 1440×900, ~58 fps, real sky colour), and the long soak. The suite passes on the dev server and on the production build. Three `@cross` tests also pass on Playwright's WebKit build.
+- **Unit (Vitest, 40 tests):** view clamping and presets, drawing from a turned camera, footprint drawing from above; stroke resampling and smoothing, rejection of bad input, closed-gesture detection, deterministic shapes and volumes, proportions that follow the gesture, the atmosphere model (transmittance, a blue zenith, warmth by preset, continuity across every hour), camera projection round trips, the drawing plane under different aspect ratios, picking and occlusion order, perspective shrink with distance, undo/redo and transaction grouping, the cloud limit, and scene validation.
+- **E2E (Playwright, 22 runs: 18 Chromium tests plus 4 WebKit runs):** look-around by right-drag, keys and the Look tool; drawing from above; view persistence; pixel-checked sky and cloud formation, drag without jumping, depth and scale, relighting, the continuous slider, occlusion picking, duplicate/delete/clear/undo/redo, persistence and recovery from corrupt data, the keyboard, PNG export (signature and dimensions), video export (probed **and fully decoded** with ffprobe: H.264 MP4, 1440×900, ~58 fps, real sky colour), and the long soak. The suite passes on the dev server and on the production build. Three `@cross` tests also pass on Playwright's WebKit build.
 - **Mobile:** with iPhone 13 emulation in Chromium, touch drawing (CDP touch events) creates a cloud and a tap selects it; the layout was inspected.
 
 ![Mobile](docs/images/mobile.jpg)
@@ -128,11 +144,12 @@ The visual target and the core idea (a drawn line becoming a realistic cloud) co
 
 ## Outcomes and limitations
 
-**What works:** drawing to a volumetric cloud whose shape follows the gesture; formation that unfolds along the stroke; select, drag, depth, scale, duplicate, delete, clear, undo and redo; five presets plus a continuous hour slider that genuinely relights the clouds; persistence and import/export; PNG capture at 1× and 2×; MP4/WebM recording; a scripted 24-second showcase that runs the real systems; adaptive quality.
+**What works:** drawing to a volumetric cloud whose shape follows the gesture; formation that unfolds along the stroke; select, drag, depth, scale, duplicate, delete, clear, undo and redo; five presets plus a continuous hour slider that genuinely relights the clouds; persistence and import/export; PNG capture at 1× and 2×; MP4/WebM recording; a scripted 30-second showcase that runs the real systems; look-around and Ground / Eye level / Above views with footprint drawing and cloud shadows on the sea; adaptive quality.
 
 **Known limitations:**
 
-- The camera is fixed (by design), and clouds can't be rotated, so yaw stays 0.
+- The camera rotates and changes altitude but doesn't translate sideways, and clouds can't be rotated independently: a cloud faces the view it was drawn from.
+- Cloud shadows fall only on the ground seen from altitude. Clouds still don't shadow each other.
 - At most 16 clouds (the atlas size). The 17th is refused with a message.
 - Clouds shadow themselves but don't cast shadows on each other.
 - The atmosphere is single scattering plus an art-directed twilight term and a fudge for multiple scattering. It's plausible, not physically exact, and the moon is far brighter than real moonlight on purpose.

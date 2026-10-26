@@ -1,7 +1,9 @@
 import { emptyScene, parseScene, serializeScene, type SceneDoc } from './scene';
+import { type View, clampView } from '../renderer/camera';
 import { useSky } from './store';
 
 const KEY = 'sky-study/scene/v1';
+const VIEW_KEY = 'sky-study/view/v1';
 const SAVE_DELAY_MS = 400;
 
 /** Restore the saved sky. Corrupt or foreign data is reported, never fatal. */
@@ -21,11 +23,35 @@ export function loadSavedScene(): { scene: SceneDoc; message: string | null } {
   };
 }
 
+/** Restore the last camera view, if any (ignored when invalid). */
+export function loadSavedView(): View | null {
+  try {
+    const raw = localStorage.getItem(VIEW_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<View>;
+    if (typeof v.yaw !== 'number' || typeof v.pitch !== 'number' || typeof v.altitude !== 'number') return null;
+    return clampView(v as View);
+  } catch {
+    return null;
+  }
+}
+
 /** Save the scene whenever it changes (debounced). Returns an unsubscribe function. */
 export function startAutosave(): () => void {
   let timer = 0;
   let warned = false;
+  let viewTimer = 0;
   const unsub = useSky.subscribe((state, prev) => {
+    if (state.view !== prev.view) {
+      window.clearTimeout(viewTimer);
+      viewTimer = window.setTimeout(() => {
+        try {
+          localStorage.setItem(VIEW_KEY, JSON.stringify(useSky.getState().view));
+        } catch {
+          // the scene save below reports storage problems
+        }
+      }, SAVE_DELAY_MS);
+    }
     if (state.scene === prev.scene) return;
     window.clearTimeout(timer);
     timer = window.setTimeout(() => {
@@ -39,6 +65,7 @@ export function startAutosave(): () => void {
   });
   return () => {
     window.clearTimeout(timer);
+    window.clearTimeout(viewTimer);
     unsub();
   };
 }

@@ -81,4 +81,32 @@ if (scenario === 'manip') {
   await page.screenshot({ path: `${out}/golden.png` });
   console.log('hour', await page.evaluate(() => [window.__sky.store.getState().scene.hour, window.__sky.engine.hour]));
 }
+if (scenario === 'views') {
+  await draw(wave);
+  await draw(loop);
+  await page.waitForTimeout(3800);
+  await page.screenshot({ path: `${out}/view-eye.png` });
+  await page.getByTestId('view-ground').click();
+  await page.waitForTimeout(3500);
+  await page.screenshot({ path: `${out}/view-ground.png` });
+  await page.getByTestId('view-above').click();
+  await page.waitForTimeout(4500);
+  await page.screenshot({ path: `${out}/view-above.png` });
+  // a footprint drawn from above
+  const blob = Array.from({ length: 60 }, (_, i) => { const t = (i / 59) * Math.PI * 2; return [W * 0.72 + Math.sin(t) * 150, H * 0.62 - Math.cos(t) * 90]; });
+  await draw(blob);
+  await page.waitForTimeout(4000);
+  await page.screenshot({ path: `${out}/view-above-drawn.png` });
+  console.log('above', JSON.stringify(await state()));
+  await page.getByTestId('view-eye').click();
+  await page.waitForTimeout(3500);
+  // right-drag to look around
+  await page.mouse.move(900, 400);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(600, 460, { steps: 10 });
+  await page.mouse.up({ button: 'right' });
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${out}/view-turned.png` });
+  console.log('view', JSON.stringify(await page.evaluate(() => window.__sky.store.getState().view)));
+}
 await browser.close();

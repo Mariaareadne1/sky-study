@@ -162,7 +162,14 @@ export function prepareStroke(raw: readonly Point2[]): { points: Point2[]; cente
 
 const round4 = (v: number) => Math.round(v * 1e4) / 1e4;
 
-export function buildShape(points: readonly Point2[], closed: boolean, seed: number): CloudShape {
+/**
+ * vertical: the stroke was drawn on a plane facing the viewer (x right, y up).
+ * horizontal: the stroke was drawn looking down, so it is the cloud's footprint
+ * (x right, y away from the viewer) and the cloud grows upward from it.
+ */
+export type Orientation = 'vertical' | 'horizontal';
+
+export function buildShape(points: readonly Point2[], closed: boolean, seed: number, orientation: Orientation = 'vertical'): CloudShape {
   const rng = createRng(seed);
   const rand = (a: number, b: number) => a + (b - a) * rng();
   const b = bounds(points);
@@ -216,6 +223,15 @@ export function buildShape(points: readonly Point2[], closed: boolean, seed: num
     }
   }
 
+  if (orientation === 'horizontal') {
+    // footprint → world: stroke y points away from the viewer (local −z); the
+    // random depth spread becomes the height of the mass above its base
+    for (let i = 0; i < primaries.length; i++) {
+      const l = primaries[i];
+      primaries[i] = { ...l, x: l.x, y: Math.abs(l.z) * 0.8 + l.r * 0.15, z: -l.y };
+    }
+  }
+
   // Convective towers and cauliflower: smaller lobes riding the upper surfaces.
   const lobes: Lobe[] = [...primaries];
   const meanR = primaries.reduce((a, l) => a + l.r, 0) / (primaries.length || 1);
@@ -264,8 +280,8 @@ export function buildShape(points: readonly Point2[], closed: boolean, seed: num
 }
 
 /** Base height of the shape a stroke would build (cheap enough to call before committing). */
-export function shapeHalfAfterBuild(points: readonly Point2[], closed: boolean, seed: number): { baseY: number; half: readonly [number, number, number] } {
-  const s = buildShape(points, closed, seed);
+export function shapeHalfAfterBuild(points: readonly Point2[], closed: boolean, seed: number, orientation: Orientation = 'vertical'): { baseY: number; half: readonly [number, number, number] } {
+  const s = buildShape(points, closed, seed, orientation);
   return { baseY: s.baseY, half: s.half };
 }
 

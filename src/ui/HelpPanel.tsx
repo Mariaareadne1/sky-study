@@ -8,6 +8,9 @@ import { IconClose } from './icons';
 const SHORTCUTS: [string, string][] = [
   ['D', 'Draw'],
   ['V', 'Select & move'],
+  ['L / right-drag', 'Look around'],
+  ['← → ↑ ↓', 'Turn and tilt the view (⇧ for bigger steps)'],
+  ['G · E · T', 'Ground · Eye level · Above'],
   ['Scroll / ⇧-drag', 'Push a cloud away or bring it closer'],
   ['⌫', 'Delete selected cloud'],
   ['⌘Z / ⇧⌘Z', 'Undo / redo'],

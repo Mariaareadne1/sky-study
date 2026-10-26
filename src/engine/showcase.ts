@@ -3,13 +3,15 @@ import { strokeToCloud } from '../interactions/geometry';
 import { cloudDistance, moveToDistance } from '../interactions/picking';
 import { addPoint, beginStroke, releaseStroke } from '../interactions/strokes';
 import { PRESETS } from '../atmosphere/timeOfDay';
+import { DEFAULT_VIEW } from '../renderer/camera';
+import { DEG } from '../math/vec';
 import { emptyScene } from '../state/scene';
 import { useSky } from '../state/store';
 import type { Engine } from './Engine';
 import { easeOutCubic } from './Engine';
 
 /**
- * A ~24 s scripted demo that drives the *real* application: synthetic pointer
+ * A ~30 s scripted demo that drives the *real* application: synthetic pointer
  * strokes go through the same stroke → cloud pipeline, moves go through the
  * store, and lighting changes use the same presets as the UI.
  */
@@ -61,6 +63,8 @@ export async function runShowcase(engine: Engine, signal: AbortSignal): Promise<
   const st = useSky.getState();
   st.apply(() => emptyScene(hourOf('noon')));
   st.select(null);
+  st.setView(DEFAULT_VIEW);
+  engine.snapView();
   st.setUiHidden(true);
   try {
     await wait(900, signal);
@@ -105,16 +109,21 @@ export async function runShowcase(engine: Engine, signal: AbortSignal): Promise<
         useSky.getState().end();
       }
     }
-    await wait(700, signal);
-    // 4. light: golden hour → blue hour → moonlight → back to golden
+    await wait(600, signal);
+    // 4. rise above the clouds: the same volumes seen from the top, shading the sea
+    useSky.getState().setView({ yaw: 0.12, pitch: -28 * DEG, altitude: 9 });
+    await wait(3900, signal);
+    useSky.getState().setView(DEFAULT_VIEW);
+    await wait(2300, signal);
+    // 5. light: golden hour → blue hour → moonlight → back to golden
     useSky.getState().setHour(hourOf('golden'));
-    await wait(3600, signal);
+    await wait(3000, signal);
     useSky.getState().setHour(hourOf('dusk'));
     await wait(2600, signal);
     useSky.getState().setHour(hourOf('night'));
     await wait(3000, signal);
     useSky.getState().setHour(hourOf('golden'));
-    await wait(3200, signal);
+    await wait(3000, signal);
   } finally {
     useSky.getState().setUiHidden(false);
   }

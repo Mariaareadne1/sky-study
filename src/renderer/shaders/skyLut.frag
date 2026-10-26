@@ -11,7 +11,7 @@ uniform vec3 uMoonDir;
 uniform vec3 uMoonIlluminance;
 uniform float uHaze;
 uniform float uAltitude;
-uniform float uGroundAlbedo;
+uniform vec3 uGroundAlbedo;
 uniform vec3 uTwilightDome;
 uniform vec3 uTwilightGlow;
 

@@ -142,7 +142,8 @@ vec3 skyColor(vec3 dir) {
   vec3 c = texture(uSkyLut, skyUv(dir)).rgb;
   // Below the horizon: no scenery, just the haze of the lower atmosphere
   // deepening slightly toward the ground.
-  float below = smoothstep(0.03, -0.04, dir.y);
+  // (only near the ground; from high up the real surface below shows through)
+  float below = smoothstep(0.03, -0.04, dir.y) * (1.0 - smoothstep(1.6, 5.0, uCamPos.y));
   if (below > 0.0) {
     vec3 hz = texture(uSkyLut, skyUv(normalize(vec3(dir.x, 0.03, dir.z)))).rgb;
     vec3 deep = texture(uSkyLut, skyUv(normalize(vec3(dir.x, 0.3, dir.z)))).rgb;
@@ -190,11 +191,45 @@ vec3 celestial(vec3 dir) {
   return c;
 }
 
+// Shadow cast by the clouds onto the surface below: a short march from the
+// ground point toward the key light through each cloud's coarse density.
+float groundShadow(vec3 pg) {
+  float od = 0.0;
+  for (int i = 0; i < MAX_CLOUDS; i++) {
+    if (i >= uCloudCount) break;
+    float s = uCloudPos[i].w;
+    vec3 o = toLocalDir(i, pg - uCloudPos[i].xyz) / s;
+    vec3 d = toLocalDir(i, uKeyDir) / s;
+    vec2 t = boxInterval(o, d, uCloudHalf[i].xyz);
+    if (t.x >= t.y) continue;
+    float dt = (t.y - t.x) / 5.0;
+    for (int k = 0; k < 5; k++) {
+      od += cloudDensity(i, o + d * (t.x + (float(k) + 0.5) * dt), 1.0, 0.0) * dt;
+    }
+  }
+  return exp(-od * SIGMA * 0.12);
+}
+
 void main() {
   vec2 frag = gl_FragCoord.xy + uJitter;
   vec2 ndc = frag / uResolution * 2.0 - 1.0;
   vec3 rd = normalize(uCamForward + uCamRight * ndc.x * uTanHalfFov * uAspect + uCamUp * ndc.y * uTanHalfFov);
   vec3 sky = skyColor(rd);
+  // From altitude the surface below is open ocean: deepen it toward slate blue
+  // and let the clouds shade it.
+  float high = smoothstep(1.6, 5.0, uCamPos.y);
+  if (high > 0.0 && rd.y < -0.01) {
+    float down = smoothstep(-0.01, -0.35, rd.y) * high;
+    sky = mix(sky, sky * vec3(0.5, 0.6, 0.78), down);
+    float tG = -uCamPos.y / rd.y;
+    if (uKeyDir.y > 0.02) {
+      // jittered per frame; accumulation turns it into a soft penumbra
+      float a = hash12(gl_FragCoord.xy + uFrame * 17.0) * 6.2832;
+      float r = sqrt(hash12(gl_FragCoord.yx + uFrame * 7.0)) * 0.16;
+      vec3 pg = uCamPos + rd * tG + vec3(cos(a), 0.0, sin(a)) * r;
+      sky *= mix(1.0, mix(0.45, 1.0, groundShadow(pg)), down);
+    }
+  }
   vec3 background = sky + celestial(rd);
 
   // ---- gather the clouds this ray crosses, sorted by entry distance ----

@@ -9,7 +9,7 @@ const shapeCache = new Map<string, CloudShape>();
 const envelopeCache = new Map<string, Uint8Array>();
 
 /** FNV-1a over the stroke coordinates + seed: identical strokes share geometry. */
-export function shapeKey(c: Pick<CloudDoc, 'seed' | 'stroke' | 'closed'>): string {
+export function shapeKey(c: Pick<CloudDoc, 'seed' | 'stroke' | 'closed' | 'orientation'>): string {
   let h = 0x811c9dc5 ^ c.seed;
   const mix = (v: number) => {
     h ^= Math.round(v * 1e4) | 0;
@@ -20,6 +20,7 @@ export function shapeKey(c: Pick<CloudDoc, 'seed' | 'stroke' | 'closed'>): strin
     mix(p.y);
   }
   mix(c.closed ? 1 : 0);
+  mix(c.orientation === 'horizontal' ? 7 : 0);
   return `${c.seed.toString(36)}-${(h >>> 0).toString(36)}-${c.stroke.length}`;
 }
 
@@ -27,7 +28,7 @@ export function shapeOf(c: CloudDoc): CloudShape {
   const key = shapeKey(c);
   let s = shapeCache.get(key);
   if (!s) {
-    s = buildShape(c.stroke, c.closed, c.seed);
+    s = buildShape(c.stroke, c.closed, c.seed, c.orientation);
     shapeCache.set(key, s);
   }
   return s;

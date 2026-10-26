@@ -1,5 +1,5 @@
 import type { Atmosphere } from '../atmosphere/timeOfDay';
-import { type Camera, createCamera } from './camera';
+import { type Camera, type View, DEFAULT_VIEW, createCamera } from './camera';
 import { type Program, type Target, GLError, createProgram, createTarget, deleteTarget, withCommon } from './gl';
 import { SLOT_DIMS } from '../clouds/shape';
 import fullscreenVert from './shaders/fullscreen.vert?raw';
@@ -14,8 +14,8 @@ export const MAX_CLOUDS = 16;
 const SKY_LUT_SIZE = [256, 144] as const;
 const SHAPE_NOISE_SIZE = 128;
 const DETAIL_NOISE_SIZE = 32;
-const CAMERA_LIGHT_ALTITUDE = 1.0;
-const GROUND_ALBEDO = 0.1;
+/** Ocean-like ground: dark, slightly blue (seen from above it reads as deep slate). */
+const GROUND_ALBEDO = [0.035, 0.06, 0.085];
 /** History length kept through gradual changes (blend weight ≈ 1/(n+1)). */
 const SOFT_HISTORY_FRAMES = 2;
 
@@ -46,6 +46,8 @@ export interface FrameInput {
   /** A gradual change (formation, light transition): keep a short temporal blend instead of resetting. */
   readonly softChange?: boolean;
   readonly time: number;
+  /** Camera view; defaults to eye level. */
+  readonly view?: View;
 }
 
 export interface RenderStats {
@@ -221,8 +223,8 @@ export class Renderer {
     return this.slots.get(id)?.slot;
   }
 
-  private updateSky(a: Atmosphere) {
-    const key = [a.hour.toFixed(4), a.haze.toFixed(4)].join('|');
+  private updateSky(a: Atmosphere, altitude: number) {
+    const key = [a.hour.toFixed(4), a.haze.toFixed(4), altitude.toFixed(3)].join('|');
     if (key === this.skyKey) return;
     this.skyKey = key;
     const gl = this.gl;
@@ -233,8 +235,8 @@ export class Renderer {
     gl.uniform3fv(u.get('uMoonDir')!, a.moonDir as unknown as number[]);
     gl.uniform3fv(u.get('uMoonIlluminance')!, a.moonIlluminance as unknown as number[]);
     gl.uniform1f(u.get('uHaze')!, a.haze);
-    gl.uniform1f(u.get('uAltitude')!, CAMERA_LIGHT_ALTITUDE);
-    gl.uniform1f(u.get('uGroundAlbedo')!, GROUND_ALBEDO);
+    gl.uniform1f(u.get('uAltitude')!, altitude);
+    gl.uniform3fv(u.get('uGroundAlbedo')!, GROUND_ALBEDO);
     gl.uniform3fv(u.get('uTwilightDome')!, a.twilight.dome as unknown as number[]);
     gl.uniform3fv(u.get('uTwilightGlow')!, a.twilight.glow as unknown as number[]);
     this.draw(this.skyProg, this.skyLut, this.skyLut.width, this.skyLut.height);
@@ -337,8 +339,9 @@ export class Renderer {
     if (input.changed) this.accumulated = 0;
     // gradual changes keep a short history: smooths noise without visible lag
     else if (input.softChange) this.accumulated = Math.min(this.accumulated, SOFT_HISTORY_FRAMES);
-    this.updateSky(input.atmosphere);
-    this.camera = createCamera(w / h);
+    const view = input.view ?? DEFAULT_VIEW;
+    this.updateSky(input.atmosphere, view.altitude);
+    this.camera = createCamera(w / h, view);
     const n = this.accumulated;
     const jitter: [number, number] = n === 0 ? [0, 0] : [halton((this.frame % 16) + 1, 2) - 0.5, halton((this.frame % 16) + 1, 3) - 0.5];
     this.setSceneUniforms(input, w, h, jitter);

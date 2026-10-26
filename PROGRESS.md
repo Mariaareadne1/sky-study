@@ -59,8 +59,16 @@ Observable in the screenshots:
 - Polish: lower ambient share, base occlusion, +noon exposure; closed gestures get a higher flat base; short preset labels on phones.
 - Final: 37 unit + 18 E2E passing on dev and production builds.
 
+### Perspective (2026-10-26, after first handoff)
+- X demo v1 (1920×1080, 25 s) delivered; v2 (31 s) adds a rise above the clouds.
+- Camera = yaw/pitch/altitude; eased display view; presets Ground / Eye level / Above; right-drag, Look tool (L), arrows; persisted separately from undoable scene.
+- Drawing plane follows the view; from above, strokes become horizontal footprints (`orientation: 'horizontal'` on the cloud doc).
+- Sky LUT from camera altitude; ocean albedo + slate deepening at altitude; jittered soft cloud shadows on the sea.
+- E2E made deterministic (seeded Math.random in tests) after one WebKit flake from random cloud seeds.
+- 40 unit + 22 E2E passing on dev and production builds.
+
 ## Remaining / ideas
-- Inter-cloud shadowing; reprojection so dragged clouds stay smooth; pinch-to-scale; Safari.app / Firefox / real-device testing; deployment.
+- Camera translation / orbit around a cloud; inter-cloud shadowing; reprojection so dragged clouds stay smooth; pinch-to-scale; Safari.app / Firefox / real-device testing; deployment.
 
 ## Environment notes
 - Dev server: `npm run dev` → http://localhost:5362 (launch config `sky-study`).

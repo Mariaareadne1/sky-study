@@ -16,6 +16,17 @@ export async function openFresh(page: Page) {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
+  // deterministic cloud seeds: the same gestures build the same clouds every run
+  await page.addInitScript(() => {
+    let a = 0x5eed;
+    Math.random = () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  });
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();

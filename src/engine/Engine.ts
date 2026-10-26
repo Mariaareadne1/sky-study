@@ -1,13 +1,16 @@
 import { computeAtmosphere, type Atmosphere } from '../atmosphere/timeOfDay';
 import { envelopeOf, pruneCaches, shapeKey, shapeOf } from '../clouds/cloudModel';
 import { type Vec3, add, clamp } from '../math/vec';
-import { type Camera, createCamera, project, rayDirection } from '../renderer/camera';
+import { type Camera, type View, createCamera, project, rayDirection } from '../renderer/camera';
 import { type Quality, type RenderCloud, Renderer } from '../renderer/Renderer';
 import type { CloudDoc } from '../state/scene';
 import { type QualityMode, useSky } from '../state/store';
 
 export const FORM_DURATION_MS = 3400;
 const HOUR_TWEEN_MS = 1700;
+/** Camera easing rate (1/s): look-around feels direct, preset changes glide. */
+const VIEW_EASE = 7;
+const VIEW_EASE_FAR = 2.6;
 const DRIFT_AMPLITUDE_KM = 0.05;
 /** Render scales the auto mode steps through (fraction of device pixels). */
 const AUTO_SCALES = [0.72, 0.62, 0.54, 0.46, 0.4, 0.34, 0.28] as const;
@@ -75,6 +78,7 @@ export class Engine {
   private atmosphere: Atmosphere;
   private atmosphereHour = NaN;
   private readonly startTime = performance.now();
+  private displayView: View;
   /** When set, `render` uses this hour instead of the tween (capture/showcase). */
   freezeTime: number | null = null;
 
@@ -84,6 +88,7 @@ export class Engine {
     const hour = useSky.getState().scene.hour;
     this.hourFrom = this.hourTo = this.displayHour = hour;
     this.atmosphere = computeAtmosphere(hour);
+    this.displayView = useSky.getState().view;
     this.resizeObserver = new ResizeObserver(() => this.syncSize());
     this.resizeObserver.observe(canvas);
     this.syncSize();
@@ -141,7 +146,35 @@ export class Engine {
   }
 
   get camera(): Camera {
-    return createCamera(this.cssW / this.cssH);
+    return createCamera(this.cssW / this.cssH, this.displayView);
+  }
+
+  get view(): View {
+    return this.displayView;
+  }
+
+  /** Jump the displayed camera straight to the target (tests, capture). */
+  snapView() {
+    this.displayView = useSky.getState().view;
+  }
+
+  private updateView(dtMs: number) {
+    const target = useSky.getState().view;
+    const cur = this.displayView;
+    if (cur === target) return;
+    let dYaw = target.yaw - cur.yaw;
+    if (dYaw > Math.PI) dYaw -= Math.PI * 2;
+    if (dYaw < -Math.PI) dYaw += Math.PI * 2;
+    const dLogAlt = Math.log(target.altitude) - Math.log(cur.altitude);
+    const big = Math.abs(dLogAlt) > 0.6 || Math.abs(target.pitch - cur.pitch) > 0.5;
+    const k = 1 - Math.exp((-(big ? VIEW_EASE_FAR : VIEW_EASE) * Math.min(dtMs, 100)) / 1000);
+    const next: View = {
+      yaw: cur.yaw + dYaw * k,
+      pitch: cur.pitch + (target.pitch - cur.pitch) * k,
+      altitude: Math.exp(Math.log(cur.altitude) + dLogAlt * k),
+    };
+    const done = Math.abs(dYaw) < 1e-4 && Math.abs(target.pitch - cur.pitch) < 1e-4 && Math.abs(dLogAlt) < 1e-4;
+    this.displayView = done ? target : next;
   }
 
   get drift(): boolean {
@@ -284,6 +317,7 @@ export class Engine {
     this.lastFrame = now;
     this.syncSize();
     this.updateHour(now);
+    this.updateView(frameMs);
     this.applyQuality(frameMs, now);
     const clouds = this.buildRenderClouds(now);
     // Hard changes (moves, new clouds, resize) reset the accumulated image;
@@ -291,6 +325,7 @@ export class Engine {
     const docs = useSky.getState().scene.clouds;
     const hard = [
       this.canvas.width, this.canvas.height, this.renderer.renderScale, this.renderer.quality,
+      this.displayView.yaw, this.displayView.pitch, this.displayView.altitude,
       ...docs.map((c) => `${c.id}:${c.position.join(',')}:${c.scale}:${c.yaw}`),
     ].join('|');
     const soft = [this.displayHour.toFixed(5), ...clouds.map((c) => c.growth.toFixed(4))].join('|');
@@ -298,7 +333,7 @@ export class Engine {
     const softChange = soft !== this.softSignature;
     this.signature = hard;
     this.softSignature = soft;
-    const stats = this.renderer.render({ clouds, atmosphere: this.atmosphere, changed, softChange, time: now / 1000 }, 0.06);
+    const stats = this.renderer.render({ clouds, atmosphere: this.atmosphere, changed, softChange, time: now / 1000, view: this.displayView }, 0.06);
     this.frames++;
     for (const fn of this.afterRender) fn(this.canvas);
     const info: FrameInfo = {
@@ -352,11 +387,11 @@ export class Engine {
     const gl = this.renderer.gl;
     const clouds = this.buildRenderClouds(performance.now()).map((c) => ({ ...c, growth: 1 }));
     const times: number[] = [];
-    this.renderer.render({ clouds, atmosphere: this.atmosphere, changed: true, time: 0 });
+    this.renderer.render({ clouds, atmosphere: this.atmosphere, changed: true, time: 0, view: this.displayView });
     gl.finish();
     for (let i = 0; i < frames; i++) {
       const t0 = performance.now();
-      this.renderer.render({ clouds, atmosphere: this.atmosphere, changed: true, time: i });
+      this.renderer.render({ clouds, atmosphere: this.atmosphere, changed: true, time: i, view: this.displayView });
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); // forces completion
       times.push(performance.now() - t0);
     }
@@ -371,6 +406,6 @@ export class Engine {
   capture(width: number, height: number, samples = 32): Uint8ClampedArray {
     const now = performance.now();
     const clouds = this.buildRenderClouds(now).map((c) => ({ ...c, growth: 1 }));
-    return this.renderer.capture({ clouds, atmosphere: this.atmosphere, changed: true, time: now / 1000 }, width, height, samples, 0.85);
+    return this.renderer.capture({ clouds, atmosphere: this.atmosphere, changed: true, time: now / 1000, view: this.displayView }, width, height, samples, 0.85);
   }
 }

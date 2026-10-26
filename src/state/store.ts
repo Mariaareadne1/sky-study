@@ -1,7 +1,8 @@
 import { create } from 'zustand';
+import { type View, DEFAULT_VIEW, clampView } from '../renderer/camera';
 import { type CloudDoc, type SceneDoc, MAX_CLOUDS, emptyScene } from './scene';
 
-export type Tool = 'draw' | 'move';
+export type Tool = 'draw' | 'move' | 'look';
 export type QualityMode = 'auto' | 'high' | 'balanced' | 'reduced';
 
 const HISTORY_LIMIT = 100;
@@ -26,6 +27,8 @@ export interface SkyState {
   readonly recording: boolean;
   /** Gentle wander of finished clouds. */
   readonly drift: boolean;
+  /** Where the camera looks from. Not part of undo history; persisted separately. */
+  readonly view: View;
   /** Wall-clock (performance.now) at which each cloud started forming. Runtime only. */
   readonly formedAt: Readonly<Record<string, number>>;
 
@@ -50,6 +53,7 @@ export interface SkyState {
   readonly setQuality: (q: QualityMode) => void;
   readonly setRecording: (v: boolean) => void;
   readonly setDrift: (v: boolean) => void;
+  readonly setView: (v: Partial<View>) => void;
   readonly notify: (text: string, tone?: Toast['tone']) => void;
   readonly dismissToast: () => void;
 }
@@ -70,6 +74,7 @@ export const useSky = create<SkyState>((set, get) => ({
   toast: null,
   recording: false,
   drift: true,
+  view: DEFAULT_VIEW,
   formedAt: {},
 
   apply: (fn) => {
@@ -153,6 +158,7 @@ export const useSky = create<SkyState>((set, get) => ({
   setQuality: (quality) => set({ quality }),
   setRecording: (recording) => set({ recording }),
   setDrift: (drift) => set({ drift }),
+  setView: (v) => set({ view: clampView({ ...get().view, ...v }) }),
   notify: (text, tone = 'info') => set({ toast: { id: ++toastId, text, tone } }),
   dismissToast: () => set({ toast: null }),
 }));

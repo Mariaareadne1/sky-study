@@ -101,6 +101,9 @@ button, input, select { font: inherit; color: inherit; }
 .tool.is-active { background: var(--active); color: var(--active-ink); }
 .divider { width: 1px; height: 18px; background: var(--glass-line); margin: 0 4px; }
 
+.view-control {
+  position: absolute; left: var(--gutter); bottom: 72px; display: flex; gap: 2px; padding: 3px; border-radius: var(--radius);
+}
 .bottom-right { position: absolute; right: var(--gutter); bottom: 20px; display: flex; align-items: flex-end; gap: 8px; }
 .time-control { display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 18px; }
 .time-presets { display: flex; gap: 2px; }
@@ -202,9 +205,13 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 12px; border: 0; bo
   :root { --gutter: 16px; }
   .wordmark p { font-size: 15px; }
   .toolbar { bottom: auto; top: 64px; }
+  .view-control { bottom: auto; top: 112px; }
   .tool span { display: none; }
   .tool { padding: 0 10px; }
-  .bottom-right { left: var(--gutter); right: var(--gutter); bottom: 16px; justify-content: space-between; }
+  .view-control {
+  position: absolute; left: var(--gutter); bottom: 72px; display: flex; gap: 2px; padding: 3px; border-radius: var(--radius);
+}
+.bottom-right { left: var(--gutter); right: var(--gutter); bottom: 16px; justify-content: space-between; }
   .time-control { flex: 1; min-width: 0; }
   .time-presets { overflow-x: auto; scrollbar-width: none; }
   .chip { padding: 0 9px; }

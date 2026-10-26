@@ -62,7 +62,7 @@ export function CaptureMenu() {
           </button>
           <hr />
           <button role="menuitem" type="button" data-testid="showcase" onClick={run(() => playShowcase(engine, false))}>
-            <IconPlay /> Play showcase <small>24 s demo · Esc stops</small>
+            <IconPlay /> Play showcase <small>30 s demo · Esc stops</small>
           </button>
           <button role="menuitem" type="button" disabled={!recordingMime} onClick={run(() => playShowcase(engine, true))}>
             <IconRecord /> Record showcase
