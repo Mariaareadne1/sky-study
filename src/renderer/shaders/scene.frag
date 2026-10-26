@@ -43,6 +43,7 @@ uniform vec4 uCloudPos[MAX_CLOUDS];    // world centre (km), w = scale
 uniform vec4 uCloudHalf[MAX_CLOUDS];   // half extents in shape space (km), w = yaw
 uniform vec4 uCloudParam[MAX_CLOUDS];  // x = atlas slot, y = growth 0..1, z = seed, w = density
 uniform int uQuality;                  // 0 reduced, 1 balanced, 2 high
+uniform float uPixelAngle;             // radians per internal pixel (vertical)
 
 const float SIGMA = 52.0;       // extinction per km at density 1
 const float SHAPE_FREQ = 0.42;  // shape-noise tiles per km
@@ -127,12 +128,12 @@ float lightOpticalDepth(int i, vec3 p, vec3 ldirLocal, float scale, float detail
   float od = 0.0;
   float seg = 0.024;
   float t = 0.0;
-  for (int k = 0; k < 7; k++) {
+  for (int k = 0; k < 6; k++) {
     // jittered sample position within each segment hides the terracing of a short march
     vec3 sp = p + ldirLocal * ((t + seg * jitter) / scale);
-    od += cloudDensity(i, sp, k < 3 ? 0.0 : 1.0, detailFade) * seg;
+    od += cloudDensity(i, sp, k < 2 ? 0.0 : 1.0, detailFade) * seg;
     t += seg;
-    seg *= 1.75;
+    seg *= 1.9;
   }
   return od * SIGMA;
 }
@@ -196,10 +197,12 @@ void main() {
   vec3 sky = skyColor(rd);
   vec3 background = sky + celestial(rd);
 
-  // ---- gather cloud intervals ----
+  // ---- gather the clouds this ray crosses, sorted by entry distance ----
   vec2 iv[MAX_CLOUDS];
   vec3 lo[MAX_CLOUDS];
   vec3 ld[MAX_CLOUDS];
+  int act[MAX_CLOUDS];
+  int nAct = 0;
   float tStart = 1e9;
   float tEnd = -1.0;
   for (int i = 0; i < MAX_CLOUDS; i++) {
@@ -214,6 +217,14 @@ void main() {
     if (t.x < t.y) {
       tStart = min(tStart, t.x);
       tEnd = max(tEnd, t.y);
+      // insertion sort by entry distance
+      int k = nAct;
+      while (k > 0 && iv[act[k - 1]].x > t.x) {
+        act[k] = act[k - 1];
+        k--;
+      }
+      act[k] = i;
+      nAct++;
     }
   }
 
@@ -242,11 +253,11 @@ void main() {
     bool nearAny = false;
     int nextIndex = -1;
     float nextStart = 1e9;
-    for (int i = 0; i < MAX_CLOUDS; i++) {
-      if (i >= uCloudCount) break;
+    for (int k = 0; k < MAX_CLOUDS; k++) {
+      if (k >= nAct) break;
+      int i = act[k];
       vec2 ti = iv[i];
-      if (ti.x >= ti.y) continue;
-      if (t < ti.x) { if (ti.x < nextStart) { nextStart = ti.x; nextIndex = i; } continue; }
+      if (t < ti.x) { if (ti.x < nextStart) { nextStart = ti.x; nextIndex = i; } break; }
       if (t > ti.y) continue;
       float scl = uCloudPos[i].w;
       vec3 p = lo[i] + ld[i] * t;
@@ -278,7 +289,8 @@ void main() {
       scatter += sigma * (uKeyColor * sun * powder + amb);
       sigmaSum += sigma;
     }
-    float dt = fineStep;
+    // never step finer than ~1.3 pixel footprints: far clouds need fewer samples
+    float dt = max(fineStep, t * uPixelAngle * 1.3);
     if (sigmaSum > 0.0) {
       emptyRun = 0;
       float stepT = exp(-sigmaSum * dt);
@@ -288,14 +300,19 @@ void main() {
       weightedDepth += t * T * (1.0 - stepT);
       depthWeight += T * (1.0 - stepT);
       T *= stepT;
-    } else if (!nearAny) {
+    } else if (nearAny) {
+      // inside the envelope but eroded away: stride a little faster
+      dt *= 1.6;
+    } else {
       // outside every envelope: stride, or jump to the next cloud's box
       emptyRun++;
-      dt = fineStep * (emptyRun > 2 ? 4.0 : 2.0);
+      dt *= emptyRun > 2 ? 4.0 : 2.0;
       bool inside = false;
-      for (int i = 0; i < MAX_CLOUDS; i++) {
-        if (i >= uCloudCount) break;
-        if (iv[i].x < iv[i].y && t >= iv[i].x && t <= iv[i].y) inside = true;
+      for (int k = 0; k < MAX_CLOUDS; k++) {
+        if (k >= nAct) break;
+        vec2 ti = iv[act[k]];
+        if (t < ti.x) break;
+        if (t <= ti.y) inside = true;
       }
       if (!inside && nextIndex >= 0) {
         t = nextStart + fineStep * noiseOffset;

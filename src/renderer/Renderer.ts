@@ -294,6 +294,7 @@ export class Renderer {
     set1f('uNight', a.night);
     set1f('uTime', input.time);
     set1i('uQuality', QUALITY_INDEX[this.quality]);
+    set1f('uPixelAngle', (2 * Math.tan(cam.fovY / 2)) / h);
     set1f('uSlotCount', MAX_CLOUDS);
     set3('uSlotTexel', [1 / SLOT_DIMS.x, 1 / SLOT_DIMS.y, 1 / SLOT_DIMS.z]);
 

@@ -236,10 +236,10 @@ export class Engine {
     }
     // Adapt only on sustained trends; ignore single hitches.
     this.frameEma = this.frameEma * 0.92 + Math.min(frameMs, 100) * 0.08;
-    if (this.frameEma > 26) {
+    if (this.frameEma > 24) {
       this.fastSince = 0;
       if (!this.slowSince) this.slowSince = now;
-      if (now - this.slowSince > 1200 && this.autoIndex < AUTO_SCALES.length - 1) {
+      if (now - this.slowSince > 700 && this.autoIndex < AUTO_SCALES.length - 1) {
         this.autoIndex++;
         this.slowSince = now;
       }
@@ -339,6 +339,32 @@ export class Engine {
     let hr = 0, hb = 0;
     for (const [, i] of top) { hr += px[i]; hb += px[i + 2]; }
     return { r: r / n, g: g / n, b: b / n, max, nonFinite, highlightWarmth: hr / Math.max(1, hb), glError: this.renderer.gl.getError() };
+  }
+
+  /**
+   * GPU timing: renders `frames` full (non-accumulating) frames synchronously,
+   * waiting for the GPU after each, and returns mean/median ms per frame.
+   */
+  benchmark(frames = 30, scale?: number, quality?: Quality) {
+    const prev = { scale: this.renderer.renderScale, quality: this.renderer.quality };
+    if (scale) this.renderer.renderScale = scale;
+    if (quality) this.renderer.quality = quality;
+    const gl = this.renderer.gl;
+    const clouds = this.buildRenderClouds(performance.now()).map((c) => ({ ...c, growth: 1 }));
+    const times: number[] = [];
+    this.renderer.render({ clouds, atmosphere: this.atmosphere, changed: true, time: 0 });
+    gl.finish();
+    for (let i = 0; i < frames; i++) {
+      const t0 = performance.now();
+      this.renderer.render({ clouds, atmosphere: this.atmosphere, changed: true, time: i });
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); // forces completion
+      times.push(performance.now() - t0);
+    }
+    this.renderer.renderScale = prev.scale;
+    this.renderer.quality = prev.quality;
+    times.sort((a, b) => a - b);
+    const [w, h] = this.renderer.renderSizeFor(this.canvas.width, this.canvas.height, scale ?? prev.scale);
+    return { mean: times.reduce((a, b) => a + b, 0) / times.length, median: times[Math.floor(times.length / 2)], p90: times[Math.floor(times.length * 0.9)], renderWidth: w, renderHeight: h, canvas: [this.canvas.width, this.canvas.height] };
   }
 
   /** High-quality still of the current scene (no drift, settled formation). */
