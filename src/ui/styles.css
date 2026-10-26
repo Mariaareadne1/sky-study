@@ -143,7 +143,7 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 12px; border: 0; bo
 .menu button:disabled { opacity: 0.4; cursor: default; }
 .menu hr { border: 0; height: 1px; background: var(--glass-line); margin: 4px 6px; }
 .pill { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: var(--radius); cursor: pointer; font-size: 13px; }
-.record-stop { color: #fff; }
+.record-stop { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); color: #fff; background: var(--glass-strong); z-index: 5; }
 .record-stop svg { color: #ff8a7a; }
 
 .hint {

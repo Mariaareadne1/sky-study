@@ -16,6 +16,8 @@ const SHAPE_NOISE_SIZE = 128;
 const DETAIL_NOISE_SIZE = 32;
 const CAMERA_LIGHT_ALTITUDE = 1.0;
 const GROUND_ALBEDO = 0.1;
+/** History length kept through gradual changes (blend weight ≈ 1/(n+1)). */
+const SOFT_HISTORY_FRAMES = 2;
 
 export type Quality = 'reduced' | 'balanced' | 'high';
 const QUALITY_INDEX: Record<Quality, number> = { reduced: 0, balanced: 1, high: 2 };
@@ -41,6 +43,8 @@ export interface FrameInput {
   readonly atmosphere: Atmosphere;
   /** True when something visible changed in a way that invalidates accumulated frames. */
   readonly changed: boolean;
+  /** A gradual change (formation, light transition): keep a short temporal blend instead of resetting. */
+  readonly softChange?: boolean;
   readonly time: number;
 }
 
@@ -330,6 +334,8 @@ export class Renderer {
     this.ensureTargets(w, h);
     if (this.syncSlots(input.clouds)) this.accumulated = 0;
     if (input.changed) this.accumulated = 0;
+    // gradual changes keep a short history: smooths noise without visible lag
+    else if (input.softChange) this.accumulated = Math.min(this.accumulated, SOFT_HISTORY_FRAMES);
     this.updateSky(input.atmosphere);
     this.camera = createCamera(w / h);
     const n = this.accumulated;

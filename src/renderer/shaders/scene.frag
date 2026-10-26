@@ -112,11 +112,14 @@ float cloudDensity(int i, vec3 p, float lod, float detailFade) {
     // cauliflower on top, ragged and wispier toward the base
     float cauli = dn.r * 0.6 + dn.g * 0.28 + dn.b * 0.12;
     float base = smoothstep(0.35, 0.0, hy);
-    d -= ((1.0 - cauli) * mix(0.3, 0.42, base)) * detailFade;
+    // while condensing the fine erosion is weak, so vapour reads soft, not speckled
+    d -= ((1.0 - cauli) * mix(0.3, 0.42, base)) * detailFade * mix(0.35, 1.0, reveal);
   } else {
     d -= 0.13;
   }
-  float dens = smoothstep(0.0, mix(0.12, 0.05, detailFade), d);
+  // forming: a wide, translucent ramp (vapour) that tightens into a crisp surface
+  float edge = mix(0.12, 0.05, detailFade);
+  float dens = smoothstep(0.0, mix(0.5, edge, reveal), d) * mix(0.3, 1.0, reveal);
   return dens * prm.w;
 }
 

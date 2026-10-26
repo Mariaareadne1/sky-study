@@ -3,10 +3,11 @@ import { PRESETS } from '../atmosphere/timeOfDay';
 import { Engine } from '../engine/Engine';
 import { loadSavedScene, startAutosave } from '../state/persistence';
 import { useSky } from '../state/store';
+import { stopRecording, stopShowcase } from '../capture/session';
 import { CaptureMenu } from './CaptureMenu';
 import { EngineContext } from './engineContext';
 import { HelpPanel } from './HelpPanel';
-import { IconClear, IconEye, IconHelp, IconMove, IconPen, IconRedo, IconUndo } from './icons';
+import { IconClear, IconEye, IconHelp, IconMove, IconPen, IconRedo, IconStop, IconUndo } from './icons';
 import { InteractionLayer } from './InteractionLayer';
 import { SelectionBar } from './SelectionBar';
 import { TimeControl } from './TimeControl';
@@ -42,7 +43,11 @@ function useKeyboard() {
         case 'd': case 'D': st.setTool('draw'); break;
         case 'v': case 'V': st.setTool('move'); break;
         case 'h': case 'H': st.setUiHidden(!st.uiHidden); break;
-        case 'Escape': st.select(null); if (st.uiHidden && !st.recording) st.setUiHidden(false); break;
+        case 'Escape':
+          if (stopShowcase()) break;
+          st.select(null);
+          if (st.uiHidden && !st.recording) st.setUiHidden(false);
+          break;
         case 'Delete': case 'Backspace':
           if (st.selectedId && !isRange) { e.preventDefault(); st.deleteCloud(st.selectedId); }
           break;
@@ -166,6 +171,11 @@ export function App() {
         {engine && !uiHidden && <Chrome onHelp={() => setHelp(true)} />}
         {engine && !uiHidden && <Hint />}
         {help && !uiHidden && <HelpPanel onClose={() => setHelp(false)} />}
+        {recording && (
+          <button type="button" className="glass pill record-stop" onClick={() => stopRecording()} data-testid="stop-recording">
+            <IconStop /> <span>Stop recording</span>
+          </button>
+        )}
         {uiHidden && !recording && <button type="button" className="unhide" onClick={() => useSky.getState().setUiHidden(false)}>Show interface (H)</button>}
         <Toast />
         {error && (

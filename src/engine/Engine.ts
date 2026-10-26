@@ -67,6 +67,7 @@ export class Engine {
   private fastSince = 0;
   private autoIndex = 2;
   private signature = '';
+  private softSignature = '';
   private hourFrom = 12.5;
   private hourTo = 12.5;
   private hourStart = 0;
@@ -285,14 +286,19 @@ export class Engine {
     this.updateHour(now);
     this.applyQuality(frameMs, now);
     const clouds = this.buildRenderClouds(now);
-    // Anything except the slow drift invalidates the accumulated image.
-    const sig = [
-      this.canvas.width, this.canvas.height, this.renderer.renderScale, this.renderer.quality, this.displayHour.toFixed(5),
-      ...clouds.map((c) => `${c.id}:${c.shapeKey}:${useSky.getState().scene.clouds.find((d) => d.id === c.id)?.position.join(',')}:${c.scale}:${c.yaw}:${c.growth.toFixed(4)}`),
+    // Hard changes (moves, new clouds, resize) reset the accumulated image;
+    // gradual ones (formation, light transitions) keep a short history.
+    const docs = useSky.getState().scene.clouds;
+    const hard = [
+      this.canvas.width, this.canvas.height, this.renderer.renderScale, this.renderer.quality,
+      ...docs.map((c) => `${c.id}:${c.position.join(',')}:${c.scale}:${c.yaw}`),
     ].join('|');
-    const changed = sig !== this.signature;
-    this.signature = sig;
-    const stats = this.renderer.render({ clouds, atmosphere: this.atmosphere, changed, time: now / 1000 }, 0.06);
+    const soft = [this.displayHour.toFixed(5), ...clouds.map((c) => c.growth.toFixed(4))].join('|');
+    const changed = hard !== this.signature;
+    const softChange = soft !== this.softSignature;
+    this.signature = hard;
+    this.softSignature = soft;
+    const stats = this.renderer.render({ clouds, atmosphere: this.atmosphere, changed, softChange, time: now / 1000 }, 0.06);
     this.frames++;
     for (const fn of this.afterRender) fn(this.canvas);
     const info: FrameInfo = {

@@ -1,24 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Recorder, capturePng, downloadBlob, extensionFor, pickRecordingMime, timestamp } from '../capture/capture';
-import { runShowcase } from '../engine/showcase';
-import { useSky } from '../state/store';
+import { extensionFor } from '../capture/capture';
+import { playShowcase, recordingMime, savePng, startRecording } from '../capture/session';
 import { useEngine } from './engineContext';
-import { IconCamera, IconPlay, IconRecord, IconStop } from './icons';
-
-declare global {
-  interface Window {
-    __skyCapture?: { lastPng?: { width: number; height: number; size: number }; lastVideo?: { mime: string; size: number; blob: Blob } };
-  }
-}
+import { IconCamera, IconPlay, IconRecord } from './icons';
 
 export function CaptureMenu() {
   const engine = useEngine();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const recording = useSky((s) => s.recording);
-  const recorder = useRef<Recorder | null>(null);
-  const showcase = useRef<AbortController | null>(null);
-  const [mime] = useState<string | null>(() => pickRecordingMime());
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,91 +19,11 @@ export function CaptureMenu() {
     return () => window.removeEventListener('pointerdown', close);
   }, [open]);
 
-  async function savePng(mult: number) {
-    if (!engine) return;
+  if (!engine) return null;
+  const run = (fn: () => unknown) => () => {
     setOpen(false);
-    setBusy(true);
-    const st = useSky.getState();
-    try {
-      await new Promise((r) => requestAnimationFrame(r));
-      const { blob, width, height } = await capturePng(engine, mult);
-      window.__skyCapture = { ...window.__skyCapture, lastPng: { width, height, size: blob.size } };
-      downloadBlob(blob, `sky-study-${timestamp()}.png`);
-      st.notify(`Saved ${width} × ${height} PNG.`);
-    } catch (err) {
-      st.notify(`Couldn’t capture the image: ${(err as Error).message}`, 'warn');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function startRecording(hideUi: boolean) {
-    if (!engine) return;
-    const st = useSky.getState();
-    if (!mime) {
-      st.notify('This browser can’t record the canvas (no MediaRecorder support).', 'warn');
-      return;
-    }
-    try {
-      recorder.current = new Recorder(engine, mime);
-      recorder.current.start();
-      st.setRecording(true);
-      if (hideUi) st.setUiHidden(true);
-    } catch (err) {
-      st.notify(`Couldn’t start recording: ${(err as Error).message}`, 'warn');
-    }
-  }
-
-  async function stopRecording() {
-    const st = useSky.getState();
-    const rec = recorder.current;
-    recorder.current = null;
-    st.setRecording(false);
-    if (!rec) return;
-    try {
-      const blob = await rec.stop();
-      window.__skyCapture = { ...window.__skyCapture, lastVideo: { mime: rec.mime, size: blob.size, blob } };
-      downloadBlob(blob, `sky-study-${timestamp()}.${extensionFor(rec.mime)}`);
-      st.notify(`Saved ${extensionFor(rec.mime).toUpperCase()} clip (${(blob.size / 1e6).toFixed(1)} MB).`);
-    } catch (err) {
-      st.notify(`Recording failed: ${(err as Error).message}`, 'warn');
-    }
-  }
-
-  async function playShowcase(record: boolean) {
-    if (!engine) return;
-    setOpen(false);
-    showcase.current?.abort();
-    const ctrl = new AbortController();
-    showcase.current = ctrl;
-    if (record) startRecording(false);
-    try {
-      await runShowcase(engine, ctrl.signal);
-    } catch (err) {
-      if ((err as Error).name !== 'AbortError') useSky.getState().notify(`Showcase stopped: ${(err as Error).message}`, 'warn');
-    } finally {
-      if (record) await stopRecording();
-      showcase.current = null;
-    }
-  }
-
-  // Escape stops a showcase; expose controls for automation.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showcase.current) showcase.current.abort();
-    };
-    window.addEventListener('keydown', onKey);
-    (window as unknown as { __skyShowcase: unknown }).__skyShowcase = { play: playShowcase, savePng, startRecording, stopRecording };
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
-  if (recording) {
-    return (
-      <button type="button" className="glass pill record-stop" onClick={stopRecording} data-testid="stop-recording">
-        <IconStop /> <span>Stop recording</span>
-      </button>
-    );
-  }
+    fn();
+  };
 
   return (
     <div className="capture" ref={menuRef}>
@@ -133,20 +42,29 @@ export function CaptureMenu() {
       </button>
       {open && (
         <div className="menu glass" role="menu">
-          <button role="menuitem" type="button" onClick={() => savePng(1)} data-testid="capture-png">
-            Save image <small>PNG · screen size</small>
-          </button>
-          <button role="menuitem" type="button" onClick={() => savePng(2)} data-testid="capture-png-2x">
-            Save large image <small>PNG · 2×</small>
-          </button>
-          <button role="menuitem" type="button" disabled={!mime} onClick={() => { setOpen(false); startRecording(true); }}>
-            <IconRecord /> Record clip <small>{mime ? extensionFor(mime).toUpperCase() + ' · UI hidden' : 'not supported'}</small>
+          {([1, 2] as const).map((m) => (
+            <button
+              key={m}
+              role="menuitem"
+              type="button"
+              data-testid={m === 1 ? 'capture-png' : 'capture-png-2x'}
+              onClick={run(async () => {
+                setBusy(true);
+                await savePng(engine, m);
+                setBusy(false);
+              })}
+            >
+              {m === 1 ? 'Save image' : 'Save large image'} <small>PNG · {m === 1 ? 'screen size' : '2×'}</small>
+            </button>
+          ))}
+          <button role="menuitem" type="button" disabled={!recordingMime} onClick={run(() => startRecording(engine, true))}>
+            <IconRecord /> Record clip <small>{recordingMime ? `${extensionFor(recordingMime).toUpperCase()} · UI hidden` : 'not supported'}</small>
           </button>
           <hr />
-          <button role="menuitem" type="button" onClick={() => playShowcase(false)} data-testid="showcase">
+          <button role="menuitem" type="button" data-testid="showcase" onClick={run(() => playShowcase(engine, false))}>
             <IconPlay /> Play showcase <small>24 s demo · Esc stops</small>
           </button>
-          <button role="menuitem" type="button" disabled={!mime} onClick={() => playShowcase(true)}>
+          <button role="menuitem" type="button" disabled={!recordingMime} onClick={run(() => playShowcase(engine, true))}>
             <IconRecord /> Record showcase
           </button>
         </div>
