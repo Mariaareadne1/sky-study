@@ -26,7 +26,8 @@ export function TimeControl() {
             data-testid={`preset-${p.id}`}
             onClick={() => st().setHour(p.hour)}
           >
-            {p.label}
+            <span className="long">{p.label}</span>
+            <span className="short">{p.short}</span>
           </button>
         ))}
       </div>

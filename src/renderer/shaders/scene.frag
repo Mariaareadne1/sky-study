@@ -48,7 +48,7 @@ uniform float uPixelAngle;             // radians per internal pixel (vertical)
 const float SIGMA = 52.0;       // extinction per km at density 1
 const float SHAPE_FREQ = 0.42;  // shape-noise tiles per km
 const float DETAIL_FREQ = 2.3;  // detail-noise tiles per km
-const float AMBIENT_STRENGTH = 0.85;
+const float AMBIENT_STRENGTH = 0.72;
 
 float remap(float v, float a, float b, float c, float d) {
   return c + (v - a) / max(b - a, 1e-5) * (d - c);
@@ -284,7 +284,7 @@ void main() {
       // skylight: brighter on tops, occluded by the mass above
       float hy = p.y / uCloudHalf[i].y * 0.5 + 0.5;
       float above = sampleEnvelope(i, p + vec3(0.0, 0.18 / scl, 0.0)).r;
-      float ao = exp(-above * 2.2) * 0.65 + 0.35 * hy;
+      float ao = exp(-above * 2.4) * 0.62 + 0.38 * hy * hy;
       vec3 amb = mix(uAmbientBottom, uAmbientTop, smoothstep(0.0, 0.85, hy)) * ao * AMBIENT_STRENGTH;
       scatter += sigma * (uKeyColor * sun * powder + amb);
       sigmaSum += sigma;

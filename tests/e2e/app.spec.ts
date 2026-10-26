@@ -24,7 +24,9 @@ test.describe('Sky Study', () => {
     const after = await sample(page, region);
     // the cloud is brighter and much less saturated than the blue sky behind it
     const sat = (s: { r: number; b: number }) => s.b - s.r;
-    expect(after.r).toBeGreaterThan(before.r + 25);
+    expect(after.r).toBeGreaterThan(before.r + 10);
+    // sunlit tops approach white
+    expect(after.max).toBeGreaterThan(before.max + 20);
     expect(sat(after)).toBeLessThan(sat(before) * 0.6);
     // tone mapping keeps whites below clipping on average
     expect(after.max).toBeLessThan(256);

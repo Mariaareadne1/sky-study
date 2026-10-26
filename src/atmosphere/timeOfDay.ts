@@ -12,15 +12,17 @@ export type PresetId = 'dawn' | 'noon' | 'golden' | 'dusk' | 'night';
 export interface Preset {
   readonly id: PresetId;
   readonly label: string;
+  /** Compact label for narrow screens. */
+  readonly short: string;
   readonly hour: number;
 }
 
 export const PRESETS: readonly Preset[] = [
-  { id: 'dawn', label: 'Dawn', hour: 6.35 },
-  { id: 'noon', label: 'Noon', hour: 12.5 },
-  { id: 'golden', label: 'Golden hour', hour: 18.2 },
-  { id: 'dusk', label: 'Blue hour', hour: 19.45 },
-  { id: 'night', label: 'Moonlight', hour: 22.5 },
+  { id: 'dawn', label: 'Dawn', short: 'Dawn', hour: 6.35 },
+  { id: 'noon', label: 'Noon', short: 'Noon', hour: 12.5 },
+  { id: 'golden', label: 'Golden hour', short: 'Golden', hour: 18.2 },
+  { id: 'dusk', label: 'Blue hour', short: 'Blue', hour: 19.45 },
+  { id: 'night', label: 'Moonlight', short: 'Moon', hour: 22.5 },
 ];
 
 export const HOUR_MIN = 5.5;
@@ -38,9 +40,9 @@ interface Key {
 const KEYS: readonly Key[] = [
   { h: 5.5, sunAz: -70, sunEl: -5, haze: 2.2, exposure: 1.1 },
   { h: 6.35, sunAz: -78, sunEl: 3.5, haze: 2.4, exposure: 1.0 },
-  { h: 8.5, sunAz: -125, sunEl: 24, haze: 1.6, exposure: 1.12 },
-  { h: 12.5, sunAz: -250, sunEl: 48, haze: 1.0, exposure: 1.22 },
-  { h: 16.5, sunAz: -256, sunEl: 20, haze: 1.5, exposure: 1.12 },
+  { h: 8.5, sunAz: -125, sunEl: 24, haze: 1.6, exposure: 1.2 },
+  { h: 12.5, sunAz: -250, sunEl: 48, haze: 1.0, exposure: 1.36 },
+  { h: 16.5, sunAz: -256, sunEl: 20, haze: 1.5, exposure: 1.2 },
   { h: 18.2, sunAz: -262, sunEl: 5.0, haze: 2.6, exposure: 1.0 },
   { h: 19.0, sunAz: -268, sunEl: -2.0, haze: 2.3, exposure: 1.0 },
   { h: 19.45, sunAz: -273, sunEl: -5.5, haze: 1.5, exposure: 0.9 },

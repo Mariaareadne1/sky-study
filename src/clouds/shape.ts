@@ -253,7 +253,7 @@ export function buildShape(points: readonly Point2[], closed: boolean, seed: num
   }
   // A flatter convective base: trim the lowest part of the mass.
   const height = 2 * hy;
-  const baseY = minY + height * 0.1;
+  const baseY = minY + height * (closed ? 0.2 : 0.1);
   const pad = 0.06;
   return {
     lobes: lobes.map((l) => ({ x: round4(l.x), y: round4(l.y), z: round4(l.z), r: round4(l.r), t: round4(clamp(l.t, 0, 1.2)) })),
