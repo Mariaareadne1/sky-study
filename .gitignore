@@ -6,4 +6,4 @@ playwright-report
 .DS_Store
 .vercel
 artifacts/
-*-demo-x.mp4
+sky-study-demo-x*.mp4
