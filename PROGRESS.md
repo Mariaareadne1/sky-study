@@ -27,12 +27,12 @@ Observable in the screenshots:
 - [x] M1 — volumetric rendering spike (`/spike.html`)
 - [x] M2 — sky + five time presets
 - [x] M3 — stroke capture & shape generation
-- [x] M4 — formation animation (first pass; frame-by-frame review pending)
+- [x] M4 — formation animation (frame-reviewed from the recorded showcase)
 - [x] M5 — movable 3D clouds
 - [x] M6 — UI, undo/redo, persistence
-- [ ] M7 — capture/export
-- [ ] M8 — optimisation
-- [ ] M9 — QA, case study
+- [x] M7 — capture/export
+- [x] M8 — optimisation
+- [x] M9 — QA, case study
 
 ## Log
 
@@ -50,6 +50,17 @@ Observable in the screenshots:
 - Depth moves keep altitude (like a real receding cloud it sinks toward the horizon) — first version moved along the view ray, which sent far clouds to 10 km altitude.
 - Golden-hour finding from the pixel test: with the sun slightly in front the visible faces were in shadow and read cool. Swung the evening sun to behind-right so lit faces face the viewer.
 - Tests: 37 unit (Vitest) + 12 E2E (Playwright, Chromium on Metal; 3 also on Playwright WebKit). E2E assertions use `engine.sample()`, a small offscreen render of the real scene, so they check pixels, not just state.
+
+### M7–M9
+- Bug: recording hid the UI, unmounting the menu that owned the recorder. Moved to `src/capture/session.ts`; a stop pill renders whenever recording.
+- Formation frame review (ffmpeg crops of the showcase) showed specks and IGN dither blocks: soft changes now keep a 2-frame history; early formation is translucent vapour.
+- Perf (see CASE_STUDY.md table): sorted per-pixel cloud lists, distance-aware steps, faster empty strides, 6-step light march. 16 clouds balanced 26.7 → 14.4 ms.
+- Soak test: 20 gestures, edits, 15 light changes, resizes, captures, reload — no errors, 60 fps throughout.
+- Polish: lower ambient share, base occlusion, +noon exposure; closed gestures get a higher flat base; short preset labels on phones.
+- Final: 37 unit + 18 E2E passing on dev and production builds.
+
+## Remaining / ideas
+- Inter-cloud shadowing; reprojection so dragged clouds stay smooth; pinch-to-scale; Safari.app / Firefox / real-device testing; deployment.
 
 ## Environment notes
 - Dev server: `npm run dev` → http://localhost:5362 (launch config `sky-study`).

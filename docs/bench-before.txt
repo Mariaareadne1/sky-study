@@ -1,0 +1,16 @@
+GPU: ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version) | DPR 2 | viewport 1440x900
+ 1 clouds | reduced  | 1037x648 (canvas 2880x1800) | mean 5.8 ms | median 4.2 | p90 11.1
+ 1 clouds | balanced | 1440x900 (canvas 2880x1800) | mean 8.3 ms | median 8.2 | p90 13.1
+ 1 clouds | high     | 2074x1296 (canvas 2880x1800) | mean 19.7 ms | median 14.1 | p90 17.0
+ 4 clouds | reduced  | 1037x648 (canvas 2880x1800) | mean 3.9 ms | median 3.8 | p90 5.1
+ 4 clouds | balanced | 1440x900 (canvas 2880x1800) | mean 8.4 ms | median 8.0 | p90 10.0
+ 4 clouds | high     | 2074x1296 (canvas 2880x1800) | mean 15.6 ms | median 13.7 | p90 15.9
+ 8 clouds | reduced  | 1037x648 (canvas 2880x1800) | mean 11.5 ms | median 11.3 | p90 14.9
+ 8 clouds | balanced | 1440x900 (canvas 2880x1800) | mean 20.5 ms | median 19.6 | p90 25.8
+ 8 clouds | high     | 2074x1296 (canvas 2880x1800) | mean 39.7 ms | median 38.8 | p90 45.6
+16 clouds | reduced  | 1037x648 (canvas 2880x1800) | mean 14.8 ms | median 14.5 | p90 16.8
+16 clouds | balanced | 1440x900 (canvas 2880x1800) | mean 26.7 ms | median 25.7 | p90 31.1
+16 clouds | high     | 2074x1296 (canvas 2880x1800) | mean 57.3 ms | median 54.8 | p90 64.9
+live loop (auto quality, 16 clouds): {"fps":19.8537700027564,"scale":0.54,"quality":"balanced"}
+
+[exited with code 0]
