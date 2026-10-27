@@ -67,6 +67,11 @@ Observable in the screenshots:
 - E2E made deterministic (seeded Math.random in tests) after one WebKit flake from random cloud seeds.
 - 40 unit + 22 E2E passing on dev and production builds.
 
+### Pixel-art style (2026-10-27)
+- Toggle (P / top-right button / help panel) with pixel size 3–8 px; persisted in `sky-study/prefs/v1`.
+- Present pass: block-centre sampling, 9-step brightness palette, Bayer dither only at band seams (first try dithered whole gradients), hue-shifted ramps, saturation lift. Scene pass: fine erosion ×0.12, sharper edge.
+- Tests: distinct-colour count vs realistic, lighting still warms, persistence, PNG grid. 40 unit + 25 E2E on dev and prod.
+
 ## Remaining / ideas
 - Camera translation / orbit around a cloud; inter-cloud shadowing; reprojection so dragged clouds stay smooth; pinch-to-scale; Safari.app / Firefox / real-device testing; deployment.
 

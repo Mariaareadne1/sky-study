@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { downloadBlob, timestamp } from '../capture/capture';
 import { parseScene, serializeScene } from '../state/scene';
-import { type QualityMode, useSky } from '../state/store';
+import { PIXEL_SIZES, type QualityMode, useSky } from '../state/store';
 import { useEngine } from './engineContext';
 import { IconClose } from './icons';
 
@@ -15,6 +15,7 @@ const SHORTCUTS: [string, string][] = [
   ['⌫', 'Delete selected cloud'],
   ['⌘Z / ⇧⌘Z', 'Undo / redo'],
   ['1 – 5', 'Dawn · Noon · Golden · Blue hour · Moonlight'],
+  ['P', 'Pixel-art / realistic style'],
   ['H', 'Hide interface'],
   ['Esc', 'Deselect / stop showcase'],
 ];
@@ -23,6 +24,8 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
   const engine = useEngine();
   const quality = useSky((s) => s.quality);
   const drift = useSky((s) => s.drift);
+  const style = useSky((s) => s.style);
+  const pixelSize = useSky((s) => s.pixelSize);
   const fileRef = useRef<HTMLInputElement>(null);
   const st = useSky.getState;
 
@@ -68,6 +71,25 @@ export function HelpPanel({ onClose }: { onClose: () => void }) {
             <option value="reduced">Reduced</option>
           </select>
         </label>
+        <label>
+          <span>Style</span>
+          <select value={style} onChange={(e) => st().setStyle(e.target.value as 'realistic' | 'pixel')} data-testid="style-select">
+            <option value="realistic">Realistic</option>
+            <option value="pixel">Pixel art</option>
+          </select>
+        </label>
+        {style === 'pixel' && (
+          <label>
+            <span>Pixel size</span>
+            <select value={pixelSize} onChange={(e) => st().setPixelSize(Number(e.target.value))} data-testid="pixel-size">
+              {PIXEL_SIZES.map((n) => (
+                <option key={n} value={n}>
+                  {n} px
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="check">
           <input
             type="checkbox"

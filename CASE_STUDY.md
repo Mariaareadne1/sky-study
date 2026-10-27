@@ -92,6 +92,21 @@ The first version had a fixed camera. Because the clouds were real volumes from 
 
 Cost: from above, more of the frame is cloud and every downward pixel runs the shadow march. Sixteen clouds take about 21 ms at balanced quality, versus 14 ms at eye level (`docs/bench-above.txt`). Auto quality drops the render scale to compensate.
 
+## Pixel-art style
+
+Pixel art is a second finish on the same 3D scene, not a separate renderer: the clouds are still raymarched volumes with the same sun, shadows, time of day and perspective.
+
+- **Big pixels.** The scene is raymarched at 1/`pixelSize` of CSS resolution (default 4, so 320×180 at 1280 px wide). The present pass samples each block's centre so it scales up with hard edges. Accumulation still supersamples every block, which keeps the tones stable rather than flickering.
+- **A palette from the light.** After tone mapping, the colour is lifted and saturated, then its brightness is snapped to 9 steps. Hue and chroma come from the lit scene, so golden hour, blue hour and moonlight each get their own palette automatically.
+- **Seams, not fields, of dither.** A 4×4 Bayer pattern is applied only in a thin seam where two bands meet. My first try dithered a fixed fraction of each step; on a slow sky gradient that filled huge areas with checkerboard.
+- **Hue-shifted ramps.** Darker bands lean blue-violet and lighter bands lean warm, the way pixel artists build colour ramps.
+- **Chunkier clouds.** In pixel mode the fine erosion drops to 12% and the surface edge sharpens. Detail smaller than one big pixel would otherwise show up as stipple.
+- **Small changes elsewhere.** Exposure is lifted slightly so tops read near-white, strokes are drawn crisp and 3 px wide, and PNG export keeps the pixel grid at any size.
+
+Tests count the distinct colours in a real render: the pixel style uses under 35% as many as the realistic one. They also check that it's still a blue sky with bright clouds, that golden hour still warms it, and that the setting survives a reload.
+
+![Pixel-art style](docs/images/pixel-art.jpg)
+
 ## Technical challenges
 
 - **Shapes like cotton balls.** Fixed by treating coverage as a field and displacing it with a narrow transition (above).
@@ -133,7 +148,7 @@ Every renderer change was checked on headless-GPU screenshots of the determinist
 ## Verification
 
 - **Unit (Vitest, 40 tests):** view clamping and presets, drawing from a turned camera, footprint drawing from above; stroke resampling and smoothing, rejection of bad input, closed-gesture detection, deterministic shapes and volumes, proportions that follow the gesture, the atmosphere model (transmittance, a blue zenith, warmth by preset, continuity across every hour), camera projection round trips, the drawing plane under different aspect ratios, picking and occlusion order, perspective shrink with distance, undo/redo and transaction grouping, the cloud limit, and scene validation.
-- **E2E (Playwright, 22 runs: 18 Chromium tests plus 4 WebKit runs):** look-around by right-drag, keys and the Look tool; drawing from above; view persistence; pixel-checked sky and cloud formation, drag without jumping, depth and scale, relighting, the continuous slider, occlusion picking, duplicate/delete/clear/undo/redo, persistence and recovery from corrupt data, the keyboard, PNG export (signature and dimensions), video export (probed **and fully decoded** with ffprobe: H.264 MP4, 1440×900, ~58 fps, real sky colour), and the long soak. The suite passes on the dev server and on the production build. Three `@cross` tests also pass on Playwright's WebKit build.
+- **E2E (Playwright, 25 runs: 20 Chromium tests plus 5 WebKit runs):** pixel-style banding, lighting and persistence, plus pixel PNG export; look-around by right-drag, keys and the Look tool; drawing from above; view persistence; pixel-checked sky and cloud formation, drag without jumping, depth and scale, relighting, the continuous slider, occlusion picking, duplicate/delete/clear/undo/redo, persistence and recovery from corrupt data, the keyboard, PNG export (signature and dimensions), video export (probed **and fully decoded** with ffprobe: H.264 MP4, 1440×900, ~58 fps, real sky colour), and the long soak. The suite passes on the dev server and on the production build. Three `@cross` tests also pass on Playwright's WebKit build.
 - **Mobile:** with iPhone 13 emulation in Chromium, touch drawing (CDP touch events) creates a cloud and a tap selects it; the layout was inspected.
 
 ![Mobile](docs/images/mobile.jpg)

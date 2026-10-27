@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { PRESETS } from '../atmosphere/timeOfDay';
 import { Engine } from '../engine/Engine';
-import { loadSavedScene, loadSavedView, startAutosave } from '../state/persistence';
+import { loadSavedPrefs, loadSavedScene, loadSavedView, startAutosave } from '../state/persistence';
 import { useSky } from '../state/store';
 import { stopRecording, stopShowcase } from '../capture/session';
 import { CaptureMenu } from './CaptureMenu';
 import { EngineContext } from './engineContext';
 import { HelpPanel } from './HelpPanel';
-import { IconClear, IconEye, IconHelp, IconLook, IconMove, IconPen, IconRedo, IconStop, IconUndo } from './icons';
+import { IconClear, IconEye, IconHelp, IconLook, IconMove, IconPixel, IconPen, IconRedo, IconStop, IconUndo } from './icons';
 import { ViewControl } from './ViewControl';
 import { VIEW_PRESETS } from '../renderer/camera';
 import { DEG } from '../math/vec';
@@ -46,6 +46,7 @@ function useKeyboard() {
         case 'd': case 'D': st.setTool('draw'); break;
         case 'v': case 'V': st.setTool('move'); break;
         case 'l': case 'L': st.setTool('look'); break;
+        case 'p': case 'P': st.setStyle(st.style === 'pixel' ? 'realistic' : 'pixel'); break;
         case 'g': case 'G': st.setView(VIEW_PRESETS[0].view); break;
         case 'e': case 'E': st.setView(VIEW_PRESETS[1].view); break;
         case 't': case 'T': st.setView(VIEW_PRESETS[2].view); break;
@@ -102,6 +103,7 @@ function Chrome({ onHelp }: { onHelp: () => void }) {
   const canUndo = useSky((s) => s.past.length > 0);
   const canRedo = useSky((s) => s.future.length > 0);
   const hasClouds = useSky((s) => s.scene.clouds.length > 0);
+  const style = useSky((s) => s.style);
   const st = useSky.getState;
   return (
     <>
@@ -110,6 +112,17 @@ function Chrome({ onHelp }: { onHelp: () => void }) {
         <p>Draw with atmosphere.</p>
       </header>
       <div className="top-right">
+        <button
+          type="button"
+          className={`glass icon-button ${style === 'pixel' ? 'is-on' : ''}`}
+          title={style === 'pixel' ? 'Realistic style (P)' : 'Pixel-art style (P)'}
+          aria-label="Pixel-art style"
+          aria-pressed={style === 'pixel'}
+          data-testid="style-toggle"
+          onClick={() => st().setStyle(style === 'pixel' ? 'realistic' : 'pixel')}
+        >
+          <IconPixel />
+        </button>
         <button type="button" className="glass icon-button" title="Hide interface (H)" aria-label="Hide interface" onClick={() => st().setUiHidden(true)}>
           <IconEye />
         </button>
@@ -155,6 +168,7 @@ export function App() {
   const [help, setHelp] = useState(false);
   const uiHidden = useSky((s) => s.uiHidden);
   const recording = useSky((s) => s.recording);
+  const style = useSky((s) => s.style);
   useKeyboard();
 
   useEffect(() => {
@@ -162,6 +176,11 @@ export function App() {
     useSky.getState().replaceScene(scene);
     const view = loadSavedView();
     if (view) useSky.getState().setView(view);
+    const prefs = loadSavedPrefs();
+    if (prefs) {
+      useSky.getState().setStyle(prefs.style);
+      useSky.getState().setPixelSize(prefs.pixelSize);
+    }
     if (message) useSky.getState().notify(message, 'warn');
     const stopSave = startAutosave();
     let eng: Engine | null = null;
@@ -189,7 +208,7 @@ export function App() {
 
   return (
     <EngineContext.Provider value={engine}>
-      <main className={`app ${uiHidden ? 'ui-hidden' : ''} ${recording ? 'is-recording' : ''}`}>
+      <main className={`app ${uiHidden ? 'ui-hidden' : ''} ${recording ? 'is-recording' : ''}`} data-style={style}>
         <canvas ref={canvasRef} className="sky-canvas" data-testid="sky-canvas" />
         {engine && <InteractionLayer />}
         {engine && !uiHidden && <Chrome onHelp={() => setHelp(true)} />}

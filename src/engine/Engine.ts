@@ -259,8 +259,20 @@ export class Engine {
     }
   }
 
+  /** Internal scale that makes one raymarched pixel exactly `pixelSize` CSS pixels. */
+  private pixelScale(multiplier = 1): number {
+    return 1 / (useSky.getState().pixelSize * this.dpr * multiplier);
+  }
+
   private applyQuality(frameMs: number, now: number) {
-    const mode = useSky.getState().quality;
+    const { quality: mode, style } = useSky.getState();
+    this.renderer.style = style;
+    if (style === 'pixel') {
+      // so few pixels that full-quality marching is cheap
+      this.renderer.quality = 'high';
+      this.renderer.renderScale = this.pixelScale();
+      return;
+    }
     if (mode !== 'auto') {
       const f = FIXED[mode];
       this.renderer.quality = f.quality;
@@ -324,7 +336,7 @@ export class Engine {
     // gradual ones (formation, light transitions) keep a short history.
     const docs = useSky.getState().scene.clouds;
     const hard = [
-      this.canvas.width, this.canvas.height, this.renderer.renderScale, this.renderer.quality,
+      this.canvas.width, this.canvas.height, this.renderer.renderScale, this.renderer.quality, this.renderer.style,
       this.displayView.yaw, this.displayView.pitch, this.displayView.altitude,
       ...docs.map((c) => `${c.id}:${c.position.join(',')}:${c.scale}:${c.yaw}`),
     ].join('|');
@@ -359,6 +371,7 @@ export class Engine {
     const px = this.capture(w, h, 6);
     let r = 0, g = 0, b = 0, n = 0, max = 0, nonFinite = 0;
     const lum: [number, number][] = [];
+    const colors = new Set<number>();
     for (let y = Math.floor(region.y0 * h); y < Math.ceil(region.y1 * h); y++) {
       for (let x = Math.floor(region.x0 * w); x < Math.ceil(region.x1 * w); x++) {
         const i = (y * w + x) * 4;
@@ -366,6 +379,7 @@ export class Engine {
         max = Math.max(max, px[i], px[i + 1], px[i + 2]);
         if (!Number.isFinite(px[i])) nonFinite++;
         lum.push([0.2126 * px[i] + 0.7152 * px[i + 1] + 0.0722 * px[i + 2], i]);
+        colors.add((px[i] << 16) | (px[i + 1] << 8) | px[i + 2]);
       }
     }
     // warmth (r/b) of the brightest 10% — the lit highlights
@@ -373,7 +387,7 @@ export class Engine {
     const top = lum.slice(0, Math.max(1, Math.floor(lum.length / 10)));
     let hr = 0, hb = 0;
     for (const [, i] of top) { hr += px[i]; hb += px[i + 2]; }
-    return { r: r / n, g: g / n, b: b / n, max, nonFinite, highlightWarmth: hr / Math.max(1, hb), glError: this.renderer.gl.getError() };
+    return { r: r / n, g: g / n, b: b / n, max, nonFinite, highlightWarmth: hr / Math.max(1, hb), distinctColors: colors.size, glError: this.renderer.gl.getError() };
   }
 
   /**
@@ -406,6 +420,8 @@ export class Engine {
   capture(width: number, height: number, samples = 32): Uint8ClampedArray {
     const now = performance.now();
     const clouds = this.buildRenderClouds(now).map((c) => ({ ...c, growth: 1 }));
-    return this.renderer.capture({ clouds, atmosphere: this.atmosphere, changed: true, time: now / 1000, view: this.displayView }, width, height, samples, 0.85);
+    // pixel art keeps its grid: the same internal resolution, scaled up with hard edges
+    const scale = this.renderer.style === 'pixel' ? this.pixelScale(width / this.canvas.width) : 0.85;
+    return this.renderer.capture({ clouds, atmosphere: this.atmosphere, changed: true, time: now / 1000, view: this.displayView }, width, height, samples, scale);
   }
 }

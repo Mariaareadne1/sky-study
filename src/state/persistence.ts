@@ -4,6 +4,7 @@ import { useSky } from './store';
 
 const KEY = 'sky-study/scene/v1';
 const VIEW_KEY = 'sky-study/view/v1';
+const PREFS_KEY = 'sky-study/prefs/v1';
 const SAVE_DELAY_MS = 400;
 
 /** Restore the saved sky. Corrupt or foreign data is reported, never fatal. */
@@ -36,6 +37,19 @@ export function loadSavedView(): View | null {
   }
 }
 
+/** Restore the look (realistic / pixel art) and pixel size. */
+export function loadSavedPrefs(): { style: 'realistic' | 'pixel'; pixelSize: number } | null {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as { style?: unknown; pixelSize?: unknown };
+    if (p.style !== 'realistic' && p.style !== 'pixel') return null;
+    return { style: p.style, pixelSize: typeof p.pixelSize === 'number' && Number.isFinite(p.pixelSize) ? p.pixelSize : 4 };
+  } catch {
+    return null;
+  }
+}
+
 /** Save the scene whenever it changes (debounced). Returns an unsubscribe function. */
 export function startAutosave(): () => void {
   let timer = 0;
@@ -51,6 +65,13 @@ export function startAutosave(): () => void {
           // the scene save below reports storage problems
         }
       }, SAVE_DELAY_MS);
+    }
+    if (state.style !== prev.style || state.pixelSize !== prev.pixelSize) {
+      try {
+        localStorage.setItem(PREFS_KEY, JSON.stringify({ style: state.style, pixelSize: state.pixelSize }));
+      } catch {
+        // the scene save reports storage problems
+      }
     }
     if (state.scene === prev.scene) return;
     window.clearTimeout(timer);

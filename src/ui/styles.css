@@ -39,6 +39,9 @@ button, input, select { font: inherit; color: inherit; }
   filter: drop-shadow(0 0 1.5px rgba(20, 30, 50, 0.25));
 }
 
+.app[data-style='pixel'] .stroke-layer path { stroke-width: 3; shape-rendering: crispEdges; filter: none; }
+.glass.icon-button.is-on { background: var(--active); color: var(--active-ink); }
+
 .selection {
   position: absolute; left: 0; top: 0; pointer-events: none;
   border: 1px solid rgba(255, 255, 255, 0.62);

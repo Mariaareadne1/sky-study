@@ -7,6 +7,7 @@ export interface PixelStats {
   max: number;
   nonFinite: number;
   highlightWarmth: number;
+  distinctColors: number;
   glError: number;
 }
 

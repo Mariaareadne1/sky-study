@@ -1,5 +1,10 @@
 import { create } from 'zustand';
 import { type View, DEFAULT_VIEW, clampView } from '../renderer/camera';
+import type { Style } from '../renderer/Renderer';
+
+/** Size of one pixel-art pixel, in CSS pixels. */
+export const PIXEL_SIZES = [3, 4, 6, 8] as const;
+export const DEFAULT_PIXEL_SIZE = 4;
 import { type CloudDoc, type SceneDoc, MAX_CLOUDS, emptyScene } from './scene';
 
 export type Tool = 'draw' | 'move' | 'look';
@@ -29,6 +34,8 @@ export interface SkyState {
   readonly drift: boolean;
   /** Where the camera looks from. Not part of undo history; persisted separately. */
   readonly view: View;
+  readonly style: Style;
+  readonly pixelSize: number;
   /** Wall-clock (performance.now) at which each cloud started forming. Runtime only. */
   readonly formedAt: Readonly<Record<string, number>>;
 
@@ -54,6 +61,8 @@ export interface SkyState {
   readonly setRecording: (v: boolean) => void;
   readonly setDrift: (v: boolean) => void;
   readonly setView: (v: Partial<View>) => void;
+  readonly setStyle: (s: Style) => void;
+  readonly setPixelSize: (n: number) => void;
   readonly notify: (text: string, tone?: Toast['tone']) => void;
   readonly dismissToast: () => void;
 }
@@ -75,6 +84,8 @@ export const useSky = create<SkyState>((set, get) => ({
   recording: false,
   drift: true,
   view: DEFAULT_VIEW,
+  style: 'realistic',
+  pixelSize: DEFAULT_PIXEL_SIZE,
   formedAt: {},
 
   apply: (fn) => {
@@ -159,6 +170,8 @@ export const useSky = create<SkyState>((set, get) => ({
   setRecording: (recording) => set({ recording }),
   setDrift: (drift) => set({ drift }),
   setView: (v) => set({ view: clampView({ ...get().view, ...v }) }),
+  setStyle: (style) => set({ style }),
+  setPixelSize: (n) => set({ pixelSize: Math.min(12, Math.max(2, Math.round(n))) }),
   notify: (text, tone = 'info') => set({ toast: { id: ++toastId, text, tone } }),
   dismissToast: () => set({ toast: null }),
 }));

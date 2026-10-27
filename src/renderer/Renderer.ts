@@ -20,6 +20,11 @@ const GROUND_ALBEDO = [0.035, 0.06, 0.085];
 const SOFT_HISTORY_FRAMES = 2;
 
 export type Quality = 'reduced' | 'balanced' | 'high';
+export type Style = 'realistic' | 'pixel';
+/** Pixel-art tone steps and dither strength. */
+const PIXEL_LEVELS = 9;
+/** Width of the dithered seam between bands (fraction of a band, 0..0.5). */
+const PIXEL_DITHER = 0.12;
 const QUALITY_INDEX: Record<Quality, number> = { reduced: 0, balanced: 1, high: 2 };
 /** Render-target scale relative to device pixels. */
 export const QUALITY_SCALE: Record<Quality, number> = { reduced: 0.36, balanced: 0.5, high: 0.72 };
@@ -94,6 +99,7 @@ export class Renderer {
   quality: Quality;
   /** Internal render resolution relative to the output (device) pixels. */
   renderScale: number;
+  style: Style = 'realistic';
   camera: Camera;
 
   constructor(canvas: HTMLCanvasElement, quality: Quality = 'balanced') {
@@ -296,6 +302,7 @@ export class Renderer {
     set1f('uNight', a.night);
     set1f('uTime', input.time);
     set1i('uQuality', QUALITY_INDEX[this.quality]);
+    set1f('uPixelStyle', this.style === 'pixel' ? 1 : 0);
     set1f('uPixelAngle', (2 * Math.tan(cam.fovY / 2)) / h);
     set1f('uSlotCount', MAX_CLOUDS);
     set3('uSlotTexel', [1 / SLOT_DIMS.x, 1 / SLOT_DIMS.y, 1 / SLOT_DIMS.z]);
@@ -372,10 +379,16 @@ export class Renderer {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.history[this.historyIndex]!.texture);
     gl.uniform1i(u.get('uImage')!, 0);
-    gl.uniform1f(u.get('uExposure')!, a.exposure);
+    // pixel palettes run brighter: near-white tops, pale shadows
+    gl.uniform1f(u.get('uExposure')!, a.exposure * (this.style === 'pixel' ? 1.22 : 1));
     gl.uniform1f(u.get('uNight')!, a.night);
     gl.uniform2f(u.get('uResolution')!, outW, outH);
     gl.uniform1f(u.get('uFrame')!, this.frame % 64);
+    const img = this.history[this.historyIndex]!;
+    gl.uniform1f(u.get('uPixel')!, this.style === 'pixel' ? 1 : 0);
+    gl.uniform2f(u.get('uTexSize')!, img.width, img.height);
+    gl.uniform1f(u.get('uLevels')!, PIXEL_LEVELS);
+    gl.uniform1f(u.get('uDither')!, PIXEL_DITHER);
     this.draw(this.presentProg, target, outW, outH);
   }
 

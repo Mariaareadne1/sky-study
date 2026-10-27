@@ -7,6 +7,10 @@ uniform float uExposure;
 uniform float uNight;
 uniform vec2 uResolution;
 uniform float uFrame;
+uniform float uPixel;     // 1 = pixel-art style
+uniform vec2 uTexSize;    // internal (raymarched) resolution: one "big pixel" per texel
+uniform float uLevels;    // tone steps
+uniform float uDither;    // ordered-dither strength (fraction of a step)
 
 // AgX tone mapping (minimal fit, Benjamin Wrensch) — gentle highlight roll-off,
 // keeps sunset hues from going neon.
@@ -44,12 +48,52 @@ float ign(vec2 p) {
   return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715))));
 }
 
+float bayer4(vec2 p) {
+  ivec2 q = ivec2(mod(p, 4.0));
+  int i = q.x + q.y * 4;
+  // 4x4 Bayer matrix, row-major
+  int m[16] = int[16](0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5);
+  return (float(m[i]) + 0.5) / 16.0;
+}
+
+// Pixel-art finish: flat tone bands (a "palette" of brightness steps chosen by
+// the scene's own lighting), ordered dither where bands meet, and the hue
+// shifts pixel artists use — cooler, bluer shadows; warmer highlights.
+vec3 pixelArt(vec3 c, vec2 cell) {
+  // a brighter, more saturated starting point, like a hand-picked palette
+  c = pow(c, vec3(0.88));
+  float g0 = dot(c, vec3(0.299, 0.587, 0.114));
+  c = clamp(g0 + (c - g0) * 1.35, 0.0, 1.0);
+  float l = dot(c, vec3(0.299, 0.587, 0.114));
+  // dither only in a thin seam where two bands meet; flat colour elsewhere
+  float x = l * uLevels;
+  float f = fract(x);
+  float seam = 1.0 - smoothstep(0.0, uDither, abs(f - 0.5));
+  float d = (bayer4(cell) - 0.5) * seam;
+  float lq = clamp(floor(x + 0.5 + d) / uLevels, 0.0, 1.0);
+  vec3 col = c * (lq / max(l, 0.02));
+  // hue-shifted ramps: shadows lean blue-violet, highlights lean warm
+  col = mix(col, col * vec3(0.78, 0.9, 1.22), (1.0 - lq) * 0.55);
+  col = mix(col, col * vec3(1.06, 1.03, 0.92), lq * lq * 0.3);
+  return clamp(col, 0.0, 1.0);
+}
+
 void main() {
-  vec3 hdr = texture(uImage, vUv).rgb * uExposure;
+  vec2 uv = vUv;
+  vec2 cell = vec2(0.0);
+  if (uPixel > 0.5) {
+    cell = floor(vUv * uTexSize);
+    uv = (cell + 0.5) / uTexSize;
+  }
+  vec3 hdr = texture(uImage, uv).rgb * uExposure;
   // scotopic shift at night: low light reads bluer and less saturated
   float l = dot(hdr, vec3(0.2126, 0.7152, 0.0722));
   hdr = mix(hdr, l * vec3(0.78, 0.9, 1.22), uNight * 0.45);
   vec3 c = linearToSrgb(clamp(agx(hdr), 0.0, 1.0));
+  if (uPixel > 0.5) {
+    outColor = vec4(pixelArt(c, cell), 1.0);
+    return;
+  }
   c += (ign(gl_FragCoord.xy + uFrame * 5.588238) - 0.5) / 255.0;
   outColor = vec4(c, 1.0);
 }

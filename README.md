@@ -12,6 +12,10 @@ Draw a line in the sky and it gathers into a cloud: a real volume, raymarched an
 | --- | --- | --- | --- |
 | ![](docs/images/dawn.jpg) | ![](docs/images/noon.jpg) | ![](docs/images/blue-hour.jpg) | ![](docs/images/moonlight.jpg) |
 
+**Pixel-art style** (`P`): the same 3D clouds and lighting, finished like hand-made pixel art.
+
+![Pixel-art style](docs/images/pixel-art.jpg)
+
 A 30-second showcase recorded from the app itself (UI hidden): [docs/showcase.mp4](docs/showcase.mp4). How it works: [CASE_STUDY.md](CASE_STUDY.md).
 
 ## Run
@@ -36,6 +40,7 @@ Needs WebGL2 with float render targets (any recent desktop Chrome, Edge, Safari 
 | `1`–`5` | Dawn · Noon · Golden hour · Blue hour · Moonlight |
 | ⌘Z / ⇧⌘Z | Undo / redo (a whole drag is one step) |
 | `⌫` | Delete the selected cloud |
+| `P` / pixel button | Pixel-art style (pixel size in the help panel) |
 | `H` | Hide the interface |
 | Camera button | Save PNG (screen size or 2×), record a clip, play or record the showcase |
 

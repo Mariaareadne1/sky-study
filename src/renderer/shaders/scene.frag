@@ -44,6 +44,7 @@ uniform vec4 uCloudHalf[MAX_CLOUDS];   // half extents in shape space (km), w = 
 uniform vec4 uCloudParam[MAX_CLOUDS];  // x = atlas slot, y = growth 0..1, z = seed, w = density
 uniform int uQuality;                  // 0 reduced, 1 balanced, 2 high
 uniform float uPixelAngle;             // radians per internal pixel (vertical)
+uniform float uPixelStyle;             // 1 = pixel art: chunkier masses, harder edges
 
 const float SIGMA = 52.0;       // extinction per km at density 1
 const float SHAPE_FREQ = 0.42;  // shape-noise tiles per km
@@ -114,12 +115,12 @@ float cloudDensity(int i, vec3 p, float lod, float detailFade) {
     float cauli = dn.r * 0.6 + dn.g * 0.28 + dn.b * 0.12;
     float base = smoothstep(0.35, 0.0, hy);
     // while condensing the fine erosion is weak, so vapour reads soft, not speckled
-    d -= ((1.0 - cauli) * mix(0.3, 0.42, base)) * detailFade * mix(0.35, 1.0, reveal);
+    d -= ((1.0 - cauli) * mix(0.3, 0.42, base)) * detailFade * mix(0.35, 1.0, reveal) * mix(1.0, 0.12, uPixelStyle);
   } else {
     d -= 0.13;
   }
   // forming: a wide, translucent ramp (vapour) that tightens into a crisp surface
-  float edge = mix(0.12, 0.05, detailFade);
+  float edge = mix(mix(0.12, 0.05, detailFade), 0.025, uPixelStyle);
   float dens = smoothstep(0.0, mix(0.5, edge, reveal), d) * mix(0.3, 1.0, reveal);
   return dens * prm.w;
 }
