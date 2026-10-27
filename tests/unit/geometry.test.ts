@@ -121,17 +121,50 @@ describe('picking and perspective', () => {
 });
 
 describe('changing perspective', () => {
-  test('view presets and clamping keep the camera sane', async () => {
-    const { VIEW_PRESETS, clampView } = await import('../../src/renderer/camera');
-    expect(VIEW_PRESETS.map((p) => p.id)).toEqual(['ground', 'eye', 'above']);
-    const v = clampView({ yaw: 7, pitch: -3, altitude: 999 });
+  test('clamping keeps a free-flying camera sane', async () => {
+    const { clampView, ROAM_RADIUS_KM } = await import('../../src/renderer/camera');
+    const v = clampView({ x: 500, z: -500, yaw: 7, pitch: -3, altitude: 999 });
     expect(Math.abs(v.yaw)).toBeLessThanOrEqual(Math.PI);
     expect(v.pitch).toBeGreaterThan(-Math.PI / 2);
     expect(v.altitude).toBeLessThanOrEqual(16);
+    expect(Math.hypot(v.x, v.z)).toBeCloseTo(ROAM_RADIUS_KM, 6);
+    expect(clampView({ x: NaN, z: 1, yaw: 0, pitch: 0, altitude: 1 }).x).toBe(0);
+  });
+
+  test('flight moves relative to the facing direction and scales with altitude', async () => {
+    const { stepFlight, glide } = await import('../../src/interactions/flight');
+    const base = { x: 0, z: 0, yaw: 0, pitch: 0, altitude: 1 };
+    const fwd = stepFlight(base, 1000, new Set(['forward'] as const), false)!;
+    expect(fwd.z).toBeLessThan(0); // facing -Z
+    expect(fwd.x).toBeCloseTo(0, 9);
+    const turned = stepFlight({ ...base, yaw: Math.PI / 2 }, 1000, new Set(['forward'] as const), false)!;
+    expect(turned.x).toBeGreaterThan(0); // facing +X
+    const right = stepFlight(base, 1000, new Set(['right'] as const), false)!;
+    expect(right.x).toBeGreaterThan(0);
+    const up = stepFlight(base, 1000, new Set(['up'] as const), false)!;
+    expect(up.altitude).toBeGreaterThan(1);
+    const high = stepFlight({ ...base, altitude: 9 }, 1000, new Set(['forward'] as const), false)!;
+    expect(Math.abs(high.z)).toBeGreaterThan(Math.abs(fwd.z) * 2);
+    const fast = stepFlight(base, 1000, new Set(['forward'] as const), true)!;
+    expect(Math.abs(fast.z)).toBeCloseTo(Math.abs(fwd.z) * 3, 6);
+    expect(stepFlight(base, 16, new Set(), false)).toBeNull();
+    // glide follows pitch: looking down descends
+    expect(glide({ ...base, pitch: -0.5 }, 1).altitude).toBeLessThan(1);
+  });
+
+  test('a camera that has flown away still draws clouds in front of it', () => {
+    const cam = createCamera(1.6, { x: 12, z: -20, yaw: 1.2, pitch: 0.2, altitude: 1.5 });
+    const ndc = Array.from({ length: 30 }, (_, i) => ({ x: -0.3 + (i / 29) * 0.6, y: 0.15 }));
+    const res = strokeToCloud(cam, ndc, 3);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const p = project(cam, res.cloud.position)!;
+    expect(Math.abs(p.x)).toBeLessThan(0.05);
+    expect(p.depth).toBeGreaterThan(5);
   });
 
   test('a turned camera draws on a plane facing it, and the cloud lands under the stroke', () => {
-    const view = { yaw: 0.8, pitch: 0.2, altitude: 1 };
+    const view = { x: 0, z: 0, yaw: 0.8, pitch: 0.2, altitude: 1 };
     const cam = createCamera(1.6, view);
     const ndc = Array.from({ length: 30 }, (_, i) => ({ x: -0.3 + (i / 29) * 0.6, y: 0.15 + Math.sin(i / 4) * 0.05 }));
     const res = strokeToCloud(cam, ndc, 4);
@@ -148,7 +181,7 @@ describe('changing perspective', () => {
   });
 
   test('looking down from above, a stroke becomes a horizontal footprint', () => {
-    const cam = createCamera(1.6, { yaw: 0, pitch: -0.87, altitude: 11 });
+    const cam = createCamera(1.6, { x: 0, z: 0, yaw: 0, pitch: -0.87, altitude: 11 });
     const ndc = Array.from({ length: 60 }, (_, i) => {
       const t = (i / 59) * Math.PI * 2;
       return { x: Math.sin(t) * 0.35, y: Math.cos(t) * 0.12 };

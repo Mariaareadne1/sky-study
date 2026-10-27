@@ -4,6 +4,7 @@ import { type Vec3, add, clamp } from '../math/vec';
 import { type Camera, type View, createCamera, project, rayDirection } from '../renderer/camera';
 import { type Quality, type RenderCloud, Renderer } from '../renderer/Renderer';
 import type { CloudDoc } from '../state/scene';
+import { stepFlight } from '../interactions/flight';
 import { type QualityMode, useSky } from '../state/store';
 
 export const FORM_DURATION_MS = 3400;
@@ -166,14 +167,18 @@ export class Engine {
     if (dYaw > Math.PI) dYaw -= Math.PI * 2;
     if (dYaw < -Math.PI) dYaw += Math.PI * 2;
     const dLogAlt = Math.log(target.altitude) - Math.log(cur.altitude);
-    const big = Math.abs(dLogAlt) > 0.6 || Math.abs(target.pitch - cur.pitch) > 0.5;
+    const big = Math.abs(dLogAlt) > 0.6 || Math.abs(target.pitch - cur.pitch) > 0.5 || Math.hypot(target.x - cur.x, target.z - cur.z) > 4;
     const k = 1 - Math.exp((-(big ? VIEW_EASE_FAR : VIEW_EASE) * Math.min(dtMs, 100)) / 1000);
+    const dx = target.x - cur.x;
+    const dz = target.z - cur.z;
     const next: View = {
+      x: cur.x + dx * k,
+      z: cur.z + dz * k,
       yaw: cur.yaw + dYaw * k,
       pitch: cur.pitch + (target.pitch - cur.pitch) * k,
       altitude: Math.exp(Math.log(cur.altitude) + dLogAlt * k),
     };
-    const done = Math.abs(dYaw) < 1e-4 && Math.abs(target.pitch - cur.pitch) < 1e-4 && Math.abs(dLogAlt) < 1e-4;
+    const done = Math.abs(dYaw) < 1e-4 && Math.abs(target.pitch - cur.pitch) < 1e-4 && Math.abs(dLogAlt) < 1e-4 && Math.hypot(dx, dz) < 1e-4;
     this.displayView = done ? target : next;
   }
 
@@ -329,6 +334,8 @@ export class Engine {
     this.lastFrame = now;
     this.syncSize();
     this.updateHour(now);
+    const flown = stepFlight(useSky.getState().view, frameMs);
+    if (flown) useSky.getState().setView(flown);
     this.updateView(frameMs);
     this.applyQuality(frameMs, now);
     const clouds = this.buildRenderClouds(now);
@@ -337,7 +344,7 @@ export class Engine {
     const docs = useSky.getState().scene.clouds;
     const hard = [
       this.canvas.width, this.canvas.height, this.renderer.renderScale, this.renderer.quality, this.renderer.style,
-      this.displayView.yaw, this.displayView.pitch, this.displayView.altitude,
+      this.displayView.x, this.displayView.z, this.displayView.yaw, this.displayView.pitch, this.displayView.altitude,
       ...docs.map((c) => `${c.id}:${c.position.join(',')}:${c.scale}:${c.yaw}`),
     ].join('|');
     const soft = [this.displayHour.toFixed(5), ...clouds.map((c) => c.growth.toFixed(4))].join('|');

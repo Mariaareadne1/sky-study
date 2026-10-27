@@ -1,6 +1,6 @@
 # SKY STUDY — draw with atmosphere
 
-Draw a line in the sky and it gathers into a cloud: a real volume, raymarched and lit by the same physically based atmosphere that paints the sky. Select clouds, drag them, push them kilometres into the distance, resize them, look around or rise above them, and move the light from dawn to moonlight.
+Draw a line in the sky and it gathers into a cloud: a real volume, raymarched and lit by the same physically based atmosphere that paints the sky. Select clouds, drag them, push them kilometres into the distance, resize them, fly freely among and above them, and move the light from dawn to moonlight.
 
 ![Golden hour](docs/images/golden.jpg)
 
@@ -31,12 +31,15 @@ Needs WebGL2 with float render targets (any recent desktop Chrome, Edge, Safari 
 
 | Input | Action |
 | --- | --- |
-| Drag on the sky | Draw a cloud (open strokes stretch along the gesture; closed loops fill and puff up). From Above, a stroke draws the cloud's footprint. |
+| Drag on the sky | Draw a cloud (open strokes stretch along the gesture; closed loops fill and puff up). Looking down from high up, a stroke draws the cloud's footprint. |
 | Click a cloud | Select it — drag to move, drag a corner to resize |
 | Scroll / ⇧-drag on a cloud | Push it farther away or pull it closer |
-| `D` / `V` / `L` | Draw / move / look tool |
-| Right-drag, Look tool, or arrow keys | Look around (turn and tilt) |
-| `G` · `E` · `T` | Ground · Eye level · Above (the view buttons above the toolbar) |
+| `B` / `V` / `L` | Draw / move / look tool |
+| `W A S D` or arrows | Fly anywhere (hold ⇧ to go faster); `Q` / `E` sink / rise |
+| Scroll on empty sky | Glide forward or back along your view |
+| Right-drag, Look tool, or ⇧+arrows | Look around (turn and tilt) |
+| `R` / Reset view | Back to the starting viewpoint |
+| Touch screens | An on-screen move pad flies the camera |
 | `1`–`5` | Dawn · Noon · Golden hour · Blue hour · Moonlight |
 | ⌘Z / ⇧⌘Z | Undo / redo (a whole drag is one step) |
 | `⌫` | Delete the selected cloud |

@@ -31,7 +31,8 @@ export function loadSavedView(): View | null {
     if (!raw) return null;
     const v = JSON.parse(raw) as Partial<View>;
     if (typeof v.yaw !== 'number' || typeof v.pitch !== 'number' || typeof v.altitude !== 'number') return null;
-    return clampView(v as View);
+    // saves from before free flight have no horizontal position
+    return clampView({ x: typeof v.x === 'number' ? v.x : 0, z: typeof v.z === 'number' ? v.z : 0, yaw: v.yaw, pitch: v.pitch, altitude: v.altitude });
   } catch {
     return null;
   }

@@ -92,6 +92,17 @@ The first version had a fixed camera. Because the clouds were real volumes from 
 
 Cost: from above, more of the frame is cloud and every downward pixel runs the shadow march. Sixteen clouds take about 21 ms at balanced quality, versus 14 ms at eye level (`docs/bench-above.txt`). Auto quality drops the render scale to compensate.
 
+## Free flight
+
+The three fixed viewpoints (Ground, Eye level, Above) were replaced by free flight. The view gained a horizontal position, so the camera is now (x, altitude, z) plus yaw and pitch, limited to 60 km from the start.
+
+- **Keys.** WASD or the arrows hold movement *intents*, and the engine integrates them each frame. Moves are relative to the horizontal facing, so flying forward skims over the sea instead of diving. Q and E sink and rise, Shift goes faster, and speed scales with altitude (precise near the clouds, quick high up). Intents are released on window blur so you never keep drifting.
+- **Scroll.** Over empty sky it glides along the full view direction. Over a cloud, or anywhere inside the selected cloud's outline, it still pushes that cloud. A scroll gesture keeps its target until the wheel goes idle. Without that, a pushed cloud shrank out from under the cursor and the rest of the gesture started flying the camera (the E2E suite caught this).
+- **Touch.** On coarse-pointer devices a six-button move pad flies the camera.
+- **Shortcuts.** Draw moved from `D` to `B`, since `D` now strafes. `R` and a Reset view chip return to the starting view.
+
+Nothing else had to change: the atmosphere is horizontally uniform, and drawing, picking, shadows and depth moves were already written against the camera's position rather than the origin. You can fly straight into a cloud: the march starts at the camera, so the view whites out and you come out the other side.
+
 ## Pixel-art style
 
 Pixel art is a second finish on the same 3D scene, not a separate renderer: the clouds are still raymarched volumes with the same sun, shadows, time of day and perspective.

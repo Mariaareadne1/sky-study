@@ -213,7 +213,7 @@ test.describe('Sky Study', () => {
     await openFresh(page);
     await page.keyboard.press('v');
     expect((await storeState(page)).tool).toBe('move');
-    await page.keyboard.press('d');
+    await page.keyboard.press('b');
     expect((await storeState(page)).tool).toBe('draw');
     await page.keyboard.press('h');
     await expect(page.getByTestId('tool-draw')).toHaveCount(0);

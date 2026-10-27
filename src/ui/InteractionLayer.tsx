@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { shapeOf } from '../clouds/cloudModel';
 import { MIN_BASE_KM, strokeToCloud } from '../interactions/geometry';
 import { cloudDistance, cloudExtent, moveToDistance, pickCloud } from '../interactions/picking';
+import { glide, speedFactor } from '../interactions/flight';
 import { type LiveStroke, addPoint, beginStroke, liveStrokes, releaseStroke, strokeOpacity, strokePath } from '../interactions/strokes';
 import { type Vec3, add, clamp, sub } from '../math/vec';
 import { intersectPlane } from '../renderer/camera';
@@ -31,6 +32,8 @@ export function InteractionLayer() {
   const labelRef = useRef<HTMLSpanElement>(null);
   const gesture = useRef<Gesture | null>(null);
   const wheelTimer = useRef<number>(0);
+  /** A scroll gesture keeps its target (a cloud id, or 'sky') until the wheel goes idle. */
+  const wheelTarget = useRef<string | null>(null);
   const tool = useSky((s) => s.tool);
 
   // Per-frame overlay updates (strokes, selection box) without React renders.
@@ -82,21 +85,34 @@ export function InteractionLayer() {
     const onWheel = (e: WheelEvent) => {
       const st = useSky.getState();
       const local = localPoint(e);
-      let id = st.selectedId;
-      if (!id) {
-        const { origin, dir } = engine.rayAt(local.x, local.y);
+      const { origin, dir } = engine.rayAt(local.x, local.y);
+      let id: string | null = wheelTarget.current;
+      if (id === null) {
         id = pickCloud(origin, dir, st.scene.clouds, shapeOf, (c) => engine.renderPosition(c))?.id ?? null;
-        if (id) st.select(id);
+        // the selected cloud also owns the gaps inside its outline box
+        const sel = findCloud(st.selectedId);
+        const box = !id && sel ? engine.screenRect(sel) : null;
+        if (box && local.x >= box.x && local.x <= box.x + box.w && local.y >= box.y && local.y <= box.y + box.h) id = sel!.id;
+        wheelTarget.current = id ?? 'sky';
       }
+      window.clearTimeout(wheelTimer.current);
+      wheelTimer.current = window.setTimeout(() => {
+        wheelTarget.current = null;
+        useSky.getState().end();
+      }, 350);
       const c = findCloud(id);
-      if (!c) return;
+      if (!c) {
+        // empty sky: glide along the view direction
+        e.preventDefault();
+        st.setView(glide(st.view, -e.deltaY * 0.0012 * speedFactor(st.view.altitude)));
+        return;
+      }
+      st.select(c.id);
       e.preventDefault();
       st.begin();
       const cam = engine.camera.position;
       const dist = clamp(cloudDistance(cam, c) * Math.exp(e.deltaY * 0.0016), DISTANCE_MIN, DISTANCE_MAX);
       st.updateCloud(c.id, { position: liftAboveGround(moveToDistance(cam, c.position, dist), c) });
-      window.clearTimeout(wheelTimer.current);
-      wheelTimer.current = window.setTimeout(() => useSky.getState().end(), 350);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);

@@ -6,12 +6,14 @@ import { useEngine } from './engineContext';
 import { IconClose } from './icons';
 
 const SHORTCUTS: [string, string][] = [
-  ['D', 'Draw'],
+  ['B', 'Draw'],
   ['V', 'Select & move'],
-  ['L / right-drag', 'Look around'],
-  ['← → ↑ ↓', 'Turn and tilt the view (⇧ for bigger steps)'],
-  ['G · E · T', 'Ground · Eye level · Above'],
-  ['Scroll / ⇧-drag', 'Push a cloud away or bring it closer'],
+  ['W A S D / arrows', 'Fly (hold ⇧ to go faster)'],
+  ['Q / E', 'Sink / rise'],
+  ['Scroll on the sky', 'Glide forward or back along your view'],
+  ['L / right-drag / ⇧ arrows', 'Look around'],
+  ['R', 'Reset the view'],
+  ['Scroll / ⇧-drag on a cloud', 'Push it away or bring it closer'],
   ['⌫', 'Delete selected cloud'],
   ['⌘Z / ⇧⌘Z', 'Undo / redo'],
   ['1 – 5', 'Dawn · Noon · Golden · Blue hour · Moonlight'],

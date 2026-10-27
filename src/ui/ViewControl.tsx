@@ -1,29 +1,68 @@
-import { VIEW_PRESETS } from '../renderer/camera';
+import { useEffect, useState } from 'react';
+import { type Intent, press, release } from '../interactions/flight';
+import { DEFAULT_VIEW } from '../renderer/camera';
 import { useSky } from '../state/store';
 
-const near = (a: number, b: number, eps: number) => Math.abs(a - b) < eps;
+const moved = (v: typeof DEFAULT_VIEW) =>
+  Math.hypot(v.x, v.z) > 0.05 ||
+  Math.abs(v.altitude - DEFAULT_VIEW.altitude) > 0.05 ||
+  Math.abs(v.yaw - DEFAULT_VIEW.yaw) > 0.02 ||
+  Math.abs(v.pitch - DEFAULT_VIEW.pitch) > 0.02;
 
-/** Camera presets. Look-around (right-drag, Look tool, arrow keys) refines from there. */
+function useCoarsePointer(): boolean {
+  const [coarse, setCoarse] = useState(() => window.matchMedia?.('(pointer: coarse)').matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(pointer: coarse)');
+    if (!mq) return;
+    const on = () => setCoarse(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return coarse;
+}
+
+function PadButton({ intent, label, glyph }: { intent: Intent; label: string; glyph: string }) {
+  const stop = () => release(intent);
+  return (
+    <button
+      type="button"
+      className="pad-button"
+      aria-label={label}
+      data-testid={`pad-${intent}`}
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        press(intent);
+      }}
+      onPointerUp={stop}
+      onPointerCancel={stop}
+      onLostPointerCapture={stop}
+    >
+      {glyph}
+    </button>
+  );
+}
+
+/** Free-flight helpers: reset to the starting view, and a move pad on touch screens. */
 export function ViewControl() {
   const view = useSky((s) => s.view);
-  const active = VIEW_PRESETS.find(
-    (p) => near(p.view.altitude, view.altitude, p.view.altitude * 0.05) && near(p.view.pitch, view.pitch, 0.02) && near(p.view.yaw, view.yaw, 0.02),
-  )?.id;
+  const coarse = useCoarsePointer();
   return (
-    <div className="view-control glass" role="group" aria-label="Viewpoint">
-      {VIEW_PRESETS.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          className={`chip ${active === p.id ? 'is-active' : ''}`}
-          aria-pressed={active === p.id}
-          title={`${p.label} (${p.id === 'ground' ? 'G' : p.id === 'eye' ? 'E' : 'T'})`}
-          data-testid={`view-${p.id}`}
-          onClick={() => useSky.getState().setView(p.view)}
-        >
-          {p.label}
+    <div className="view-control">
+      {coarse && (
+        <div className="move-pad glass" role="group" aria-label="Fly">
+          <PadButton intent="forward" label="Fly forward" glyph="↑" />
+          <PadButton intent="left" label="Fly left" glyph="←" />
+          <PadButton intent="back" label="Fly back" glyph="↓" />
+          <PadButton intent="right" label="Fly right" glyph="→" />
+          <PadButton intent="up" label="Rise" glyph="⤒" />
+          <PadButton intent="down" label="Sink" glyph="⤓" />
+        </div>
+      )}
+      {moved(view) && (
+        <button type="button" className="glass chip reset-view" title="Back to the starting view (R)" data-testid="reset-view" onClick={() => useSky.getState().setView(DEFAULT_VIEW)}>
+          Reset view
         </button>
-      ))}
+      )}
     </div>
   );
 }

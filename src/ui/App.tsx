@@ -9,8 +9,9 @@ import { EngineContext } from './engineContext';
 import { HelpPanel } from './HelpPanel';
 import { IconClear, IconEye, IconHelp, IconLook, IconMove, IconPixel, IconPen, IconRedo, IconStop, IconUndo } from './icons';
 import { ViewControl } from './ViewControl';
-import { VIEW_PRESETS } from '../renderer/camera';
+import { KEY_INTENTS, press, release, releaseAll, setBoost } from '../interactions/flight';
 import { DEG } from '../math/vec';
+import { DEFAULT_VIEW } from '../renderer/camera';
 import { InteractionLayer } from './InteractionLayer';
 import { SelectionBar } from './SelectionBar';
 import { TimeControl } from './TimeControl';
@@ -42,25 +43,31 @@ function useKeyboard() {
       }
       if (mod || e.altKey) return;
       const isRange = target instanceof HTMLInputElement && target.type === 'range';
+      if (e.key === 'Shift') setBoost(true);
+      // Shift + arrows: turn and tilt the view
+      if (e.shiftKey && e.key.startsWith('Arrow') && !isRange) {
+        e.preventDefault();
+        const step = 5 * DEG;
+        const v = st.view;
+        if (e.key === 'ArrowLeft') st.setView({ yaw: v.yaw - step });
+        if (e.key === 'ArrowRight') st.setView({ yaw: v.yaw + step });
+        if (e.key === 'ArrowUp') st.setView({ pitch: v.pitch + step });
+        if (e.key === 'ArrowDown') st.setView({ pitch: v.pitch - step });
+        return;
+      }
+      // WASD / arrows / Q E: fly
+      const intent = KEY_INTENTS[e.key.toLowerCase()];
+      if (intent && !isRange) {
+        if (e.key.startsWith('Arrow')) e.preventDefault();
+        press(intent);
+        return;
+      }
       switch (e.key) {
-        case 'd': case 'D': st.setTool('draw'); break;
+        case 'b': case 'B': st.setTool('draw'); break;
         case 'v': case 'V': st.setTool('move'); break;
         case 'l': case 'L': st.setTool('look'); break;
         case 'p': case 'P': st.setStyle(st.style === 'pixel' ? 'realistic' : 'pixel'); break;
-        case 'g': case 'G': st.setView(VIEW_PRESETS[0].view); break;
-        case 'e': case 'E': st.setView(VIEW_PRESETS[1].view); break;
-        case 't': case 'T': st.setView(VIEW_PRESETS[2].view); break;
-        case 'ArrowLeft': case 'ArrowRight': case 'ArrowUp': case 'ArrowDown': {
-          if (isRange || target.closest('button')) break;
-          e.preventDefault();
-          const step = (e.shiftKey ? 12 : 4) * DEG;
-          const v = st.view;
-          if (e.key === 'ArrowLeft') st.setView({ yaw: v.yaw - step });
-          if (e.key === 'ArrowRight') st.setView({ yaw: v.yaw + step });
-          if (e.key === 'ArrowUp') st.setView({ pitch: v.pitch + step });
-          if (e.key === 'ArrowDown') st.setView({ pitch: v.pitch - step });
-          break;
-        }
+        case 'r': case 'R': st.setView(DEFAULT_VIEW); break;
         case 'h': case 'H': st.setUiHidden(!st.uiHidden); break;
         case 'Escape':
           if (stopShowcase()) break;
@@ -74,8 +81,22 @@ function useKeyboard() {
           if (/^[1-5]$/.test(e.key) && !isRange) st.setHour(PRESETS[Number(e.key) - 1].hour);
       }
     };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') setBoost(false);
+      const intent = KEY_INTENTS[e.key.toLowerCase()];
+      if (intent) release(intent);
+    };
+    // never keep drifting after the window loses focus
+    const onBlur = () => releaseAll();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+      releaseAll();
+    };
   }, []);
 }
 
@@ -134,7 +155,7 @@ function Chrome({ onHelp }: { onHelp: () => void }) {
         </button>
       </div>
       <nav className="toolbar glass" aria-label="Tools">
-        <button type="button" className={`tool ${tool === 'draw' ? 'is-active' : ''}`} aria-pressed={tool === 'draw'} title="Draw (D)" data-testid="tool-draw" onClick={() => st().setTool('draw')}>
+        <button type="button" className={`tool ${tool === 'draw' ? 'is-active' : ''}`} aria-pressed={tool === 'draw'} title="Draw (B)" data-testid="tool-draw" onClick={() => st().setTool('draw')}>
           <IconPen /> <span>Draw</span>
         </button>
         <button type="button" className={`tool ${tool === 'move' ? 'is-active' : ''}`} aria-pressed={tool === 'move'} title="Move (V)" data-testid="tool-move" onClick={() => st().setTool('move')}>

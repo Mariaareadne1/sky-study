@@ -72,6 +72,11 @@ Observable in the screenshots:
 - Present pass: block-centre sampling, 9-step brightness palette, Bayer dither only at band seams (first try dithered whole gradients), hue-shifted ramps, saturation lift. Scene pass: fine erosion ×0.12, sharper edge.
 - Tests: distinct-colour count vs realistic, lighting still warms, persistence, PNG grid. 40 unit + 25 E2E on dev and prod.
 
+### Free flight (2026-10-27)
+- Presets replaced: view = x/z/altitude + yaw/pitch; WASD/arrows/QE fly, Shift faster, Shift+arrows look, scroll on sky glides, R / Reset view chip, touch move pad. Draw shortcut D → B.
+- Wheel gestures lock to their initial target (fixed a push-away regression found by E2E).
+- 42 unit + 27 E2E on dev and prod.
+
 ## Remaining / ideas
 - Camera translation / orbit around a cloud; inter-cloud shadowing; reprojection so dragged clouds stay smooth; pinch-to-scale; Safari.app / Firefox / real-device testing; deployment.
 
